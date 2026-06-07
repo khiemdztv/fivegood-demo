@@ -1,7 +1,9 @@
 'use client';
-import { passportData } from '@/data/mockData';
+import { useAuth } from '@/lib/auth';
 
 export default function PassportPage() {
+  const { user } = useAuth();
+  if (!user) return null;
   return (
     <div className="page-container">
       <div className="section-header fade-in">
@@ -22,11 +24,11 @@ export default function PassportPage() {
         <div className="passport-header">
           <div className="passport-avatar">🎓</div>
           <div>
-            <div className="passport-name">{passportData.student.fullName}</div>
-            <div className="passport-title">🏆 {passportData.student.title}</div>
-            <div className="passport-school">{passportData.student.school} · {passportData.student.faculty}</div>
+            <div className="passport-name">{user.name || 'Tên Sinh Viên'}</div>
+            <div className="passport-title">🏆 Ứng viên Sinh viên 5 Tốt</div>
+            <div className="passport-school">{user.school || 'Trường Đại học'} · {user.faculty || 'Khoa'}</div>
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-              MSSV: {passportData.student.studentCode} · Năm: {passportData.student.year}
+              MSSV: {user.mssv || 'N/A'} · Năm: 2025 - 2026
             </div>
           </div>
         </div>
@@ -35,13 +37,36 @@ export default function PassportPage() {
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>🏅 Thành tích nổi bật</div>
           <div className="achievements-grid">
-            {passportData.achievements.map((a, i) => (
-              <div key={i} className="achievement-item">
-                <div className="achievement-icon">{a.icon}</div>
-                <div className="achievement-label">{a.label}</div>
-                <div className="achievement-value">{a.value}</div>
-              </div>
-            ))}
+            <div className="achievement-item">
+              <div className="achievement-icon">📚</div>
+              <div className="achievement-label">GPA</div>
+              <div className="achievement-value">Chưa cập nhật</div>
+            </div>
+            <div className="achievement-item">
+              <div className="achievement-icon">🌍</div>
+              <div className="achievement-label">Ngoại ngữ</div>
+              <div className="achievement-value">Chưa cập nhật</div>
+            </div>
+            <div className="achievement-item">
+              <div className="achievement-icon">❤️</div>
+              <div className="achievement-label">Tình nguyện</div>
+              <div className="achievement-value">0 giờ</div>
+            </div>
+            <div className="achievement-item">
+              <div className="achievement-icon">💪</div>
+              <div className="achievement-label">Thể thao</div>
+              <div className="achievement-value">Chưa có</div>
+            </div>
+            <div className="achievement-item">
+              <div className="achievement-icon">🏆</div>
+              <div className="achievement-label">Giải thưởng</div>
+              <div className="achievement-value">0 giải</div>
+            </div>
+            <div className="achievement-item">
+              <div className="achievement-icon">🌟</div>
+              <div className="achievement-label">Rèn luyện</div>
+              <div className="achievement-value">Chưa có</div>
+            </div>
           </div>
         </div>
 
@@ -66,17 +91,16 @@ export default function PassportPage() {
 
       <div className="card fade-in">
         <div className="timeline">
-          {passportData.timeline.map((item, i) => {
-            const isLast = i === passportData.timeline.length - 1;
-            const colors = { milestone: 'var(--accent)', achievement: 'var(--green)', volunteer: 'var(--red)', sport: 'var(--yellow)', international: 'var(--accent2)', leadership: 'var(--accent3)', award: 'var(--green)' };
-            return (
-              <div key={i} className="timeline-item">
-                <div className={`timeline-dot ${isLast ? 'timeline-dot--highlight' : ''}`} style={{ borderColor: colors[item.type] || 'var(--accent)', background: isLast ? colors[item.type] : 'var(--bg)' }}></div>
-                <div className="timeline-date">{item.date}</div>
-                <div className="timeline-event" style={{ color: isLast ? 'var(--text)' : 'var(--light)', fontWeight: isLast ? 700 : 400 }}>{item.event}</div>
-              </div>
-            );
-          })}
+          <div className="timeline-item">
+            <div className="timeline-dot timeline-dot--highlight" style={{ borderColor: 'var(--green)', background: 'var(--green)' }}></div>
+            <div className="timeline-date">{new Date().toLocaleDateString('vi-VN')}</div>
+            <div className="timeline-event" style={{ color: 'var(--text)', fontWeight: 700 }}>Tạo tài khoản thành công</div>
+          </div>
+          <div className="timeline-item">
+            <div className="timeline-dot" style={{ borderColor: 'var(--muted)', background: 'var(--bg)' }}></div>
+            <div className="timeline-date">Sắp tới</div>
+            <div className="timeline-event" style={{ color: 'var(--muted)', fontWeight: 400 }}>Tải lên minh chứng đầu tiên</div>
+          </div>
         </div>
       </div>
 

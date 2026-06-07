@@ -22,7 +22,6 @@ const navConfig = {
     ]},
     { label: 'CÔNG CỤ HỖ TRỢ', items: [
       { href: '/mentor', label: 'AI Copilot', icon: '🤖' },
-      { href: '/upload', label: 'Kiểm tra MC', icon: '🔍' },
     ]},
     { label: 'HỆ THỐNG', items: [
       { href: '/architecture', label: 'Kiến trúc', icon: '📐' },
