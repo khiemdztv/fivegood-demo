@@ -45,20 +45,23 @@ export default function UploadPage() {
   const pdfToImage = async (file) => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(1);
 
-      const scale = 2; // Render ở 2x cho rõ nét
+      const scale = 2;
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({
+        canvasContext: canvas.getContext('2d'),
+        viewport,
+      }).promise;
 
       // Resize nếu quá lớn
       const maxSize = 1200;
