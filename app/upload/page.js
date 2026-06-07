@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { criteria } from '@/data/mockData';
-import { uploadEvidence, saveEvidence, updateCriteriaProgress } from '@/lib/supabase';
+import { uploadEvidence, saveEvidence, updateCriteriaProgress, findUserByMssv, createUser } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
 export default function UploadPage() {
@@ -16,7 +16,7 @@ export default function UploadPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
-  const { user } = useAuth();
+  const { user, login } = useAuth();
 
   // Nén ảnh về max 1200px để Groq Vision xử lý được
   const compressImage = (file, maxSize = 1200) => {
@@ -143,8 +143,24 @@ export default function UploadPage() {
     if (!ocrResult || saving || confirmed) return;
     setSaving(true);
 
-    const dbId = user?.dbId || user?.id;
     try {
+      // Đồng bộ user với Supabase (lấy dbId thật)
+      let dbId = user?.dbId;
+      if (!dbId || dbId > 1000000000000) {
+        let dbUser = user?.mssv ? await findUserByMssv(user.mssv) : null;
+        if (!dbUser) {
+          const { data } = await createUser({ name: user.name, mssv: user.mssv || '', school: user.school || '', faculty: user.faculty || '', role: user.role });
+          dbUser = data;
+        }
+        if (dbUser?.id) {
+          dbId = dbUser.id;
+          // Cập nhật localStorage
+          const updatedUser = { ...user, dbId: dbUser.id, id: dbUser.id };
+          login(updatedUser);
+        } else {
+          dbId = user.id;
+        }
+      }
       // 1. Lưu evidence vào Supabase
       await saveEvidence({
         userId: dbId,

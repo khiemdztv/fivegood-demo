@@ -1,7 +1,7 @@
 'use client';
 import { criteria as defaultCriteria, evidences as demoEvidences } from '@/data/mockData';
 import { useAuth } from '@/lib/auth';
-import { getUserProgress, getUserEvidences } from '@/lib/supabase';
+import { getUserProgress, getUserEvidences, createUser, findUserByMssv } from '@/lib/supabase';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
@@ -46,8 +46,37 @@ function CriteriaRing({ criterion }) {
   );
 }
 
+// Đồng bộ user với Supabase – tìm hoặc tạo mới, trả về dbId thật
+async function syncUserWithSupabase(user, login) {
+  // Nếu đã có dbId hợp lệ (số nguyên nhỏ = Supabase ID)
+  if (user.dbId && user.dbId < 1000000000000) return user.dbId;
+
+  // Tìm trong Supabase bằng MSSV
+  let dbUser = user.mssv ? await findUserByMssv(user.mssv) : null;
+
+  // Chưa có → tạo mới
+  if (!dbUser) {
+    const { data } = await createUser({
+      name: user.name,
+      mssv: user.mssv || '',
+      school: user.school || '',
+      faculty: user.faculty || '',
+      role: user.role,
+    });
+    dbUser = data;
+  }
+
+  if (dbUser?.id) {
+    // Cập nhật localStorage với dbId thật
+    const updatedUser = { ...user, dbId: dbUser.id, id: dbUser.id };
+    login(updatedUser);
+    return dbUser.id;
+  }
+  return user.id;
+}
+
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [myCriteria, setMyCriteria] = useState([]);
   const [myEvidences, setMyEvidences] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,10 +92,11 @@ export default function DashboardPage() {
       return;
     }
 
-    // User thật → load từ Supabase
+    // User thật → đồng bộ với Supabase, rồi load data
     const loadData = async () => {
-      const dbId = user.dbId || user.id;
       try {
+        const dbId = await syncUserWithSupabase(user, login);
+
         const [progressData, evidenceData] = await Promise.all([
           getUserProgress(dbId),
           getUserEvidences(dbId),
@@ -91,7 +121,6 @@ export default function DashboardPage() {
         })));
       } catch (err) {
         console.error('Load data error:', err);
-        // Fallback: empty data
         setMyCriteria(Object.entries(CRITERIA_META).map(([id, meta]) => ({
           id, criteria_id: id, progress: 0, status: 'missing', ...meta,
         })));
