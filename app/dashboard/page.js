@@ -1,7 +1,40 @@
 'use client';
-import { criteria, evidences } from '@/data/mockData';
+import { criteria as defaultCriteria, evidences as demoEvidences } from '@/data/mockData';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+
+// Lấy dữ liệu riêng cho từng user từ localStorage
+function getUserData(userId) {
+  if (!userId) return null;
+  try {
+    const data = localStorage.getItem(`fg_data_${userId}`);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+}
+
+function saveUserData(userId, data) {
+  if (!userId) return;
+  localStorage.setItem(`fg_data_${userId}`, JSON.stringify(data));
+}
+
+// Tạo dữ liệu mới cho user mới (bắt đầu từ 0%)
+function createFreshUserData() {
+  return {
+    criteria: [
+      { id: 'c1', code: 'DAO_DUC', name: 'Đạo đức tốt', icon: '🌟', color: '#3b82f6', progress: 0, status: 'missing' },
+      { id: 'c2', code: 'HOC_TAP', name: 'Học tập tốt', icon: '📚', color: '#8b5cf6', progress: 0, status: 'missing' },
+      { id: 'c3', code: 'THE_LUC', name: 'Thể lực tốt', icon: '💪', color: '#10b981', progress: 0, status: 'missing' },
+      { id: 'c4', code: 'TINH_NGUYEN', name: 'Tình nguyện tốt', icon: '❤️', color: '#ef4444', progress: 0, status: 'missing' },
+      { id: 'c5', code: 'HOI_NHAP', name: 'Hội nhập tốt', icon: '🌍', color: '#06b6d4', progress: 0, status: 'missing' },
+    ],
+    evidences: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+// Demo accounts dùng dữ liệu mock
+const DEMO_MSSV = ['20210001', 'CB001'];
 
 function CriteriaRing({ criterion }) {
   const r = 34;
@@ -26,7 +59,7 @@ function CriteriaRing({ criterion }) {
       <div className="criteria-name">{criterion.name}</div>
       <div style={{ fontSize: '18px', fontWeight: 700, color: criterion.color, marginBottom: '6px' }}>{criterion.progress}%</div>
       <span className={`criteria-status status-${criterion.status}`}>
-        {criterion.status === 'complete' ? '✅ Hoàn thành' : criterion.status === 'in_progress' ? '🔶 Đang tiến hành' : '❌ Còn thiếu'}
+        {criterion.status === 'complete' ? '✅ Hoàn thành' : criterion.status === 'in_progress' ? '🔶 Đang tiến hành' : '❌ Chưa có MC'}
       </span>
     </div>
   );
@@ -34,9 +67,50 @@ function CriteriaRing({ criterion }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const totalProgress = Math.round(criteria.reduce((s, c) => s + c.progress, 0) / criteria.length);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Demo accounts dùng dữ liệu mock
+    if (DEMO_MSSV.includes(user.mssv)) {
+      setUserData({ criteria: defaultCriteria, evidences: demoEvidences });
+      return;
+    }
+
+    // User thật: lấy dữ liệu riêng
+    let data = getUserData(user.id);
+    if (!data) {
+      data = createFreshUserData();
+      saveUserData(user.id, data);
+    }
+    setUserData(data);
+  }, [user]);
+
+  const myCriteria = userData?.criteria || [];
+  const myEvidences = userData?.evidences || [];
+  const totalProgress = myCriteria.length > 0 ? Math.round(myCriteria.reduce((s, c) => s + c.progress, 0) / myCriteria.length) : 0;
   const displayName = user?.name || 'Sinh viên';
   const firstName = displayName.split(' ').pop();
+
+  // Tính checklist dựa trên tiến độ thật
+  const todoItems = myCriteria
+    .filter(c => c.progress < 100)
+    .map(c => ({
+      text: `Upload minh chứng cho tiêu chí "${c.name}"`,
+      done: false,
+      urgent: c.progress === 0,
+    }));
+
+  const doneItems = myCriteria
+    .filter(c => c.progress >= 100)
+    .map(c => ({
+      text: `Tiêu chí "${c.name}" đã hoàn thành`,
+      done: true,
+      urgent: false,
+    }));
+
+  const checklistItems = [...todoItems, ...doneItems].slice(0, 5);
 
   return (
     <div className="page-container">
@@ -53,10 +127,10 @@ export default function DashboardPage() {
       <div className="card fade-in" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08))', borderColor: 'rgba(59,130,246,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div style={{ fontSize: '14px', fontWeight: 600 }}>📊 Tiến độ tổng thể hồ sơ SV5T</div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent)' }}>{totalProgress}%</div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: totalProgress >= 80 ? 'var(--green)' : totalProgress >= 50 ? 'var(--accent)' : 'var(--red)' }}>{totalProgress}%</div>
         </div>
         <div style={{ background: 'var(--border)', borderRadius: '100px', height: '10px', overflow: 'hidden' }}>
-          <div style={{ width: `${totalProgress}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent), var(--accent3))', borderRadius: '100px', transition: 'width 1s ease' }}></div>
+          <div style={{ width: `${totalProgress}%`, height: '100%', background: totalProgress >= 80 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, var(--accent), var(--accent3))', borderRadius: '100px', transition: 'width 1s ease' }}></div>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>Kỳ xét: SV5T năm học 2025–2026 · Deadline: 30/06/2026</div>
       </div>
@@ -71,36 +145,38 @@ export default function DashboardPage() {
       </div>
 
       <div className="criteria-grid fade-in">
-        {criteria.map(c => <CriteriaRing key={c.id} criterion={c} />)}
+        {myCriteria.map(c => <CriteriaRing key={c.id} criterion={c} />)}
       </div>
 
-      {/* Checklist */}
+      {/* Checklist + AI Mentor */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
         <div className="card fade-in">
           <div className="card-title">📝 Việc cần làm tiếp theo</div>
-          {[
-            { text: 'Bổ sung giấy xác nhận tình nguyện', done: false, urgent: true },
-            { text: 'Upload minh chứng hoạt động giao lưu quốc tế', done: false, urgent: false },
-            { text: 'Bổ sung minh chứng NCKH/đề tài', done: false, urgent: false },
-            { text: 'Upload phiếu điểm rèn luyện', done: true, urgent: false },
-            { text: 'Upload bảng điểm HK1', done: true, urgent: false },
-          ].map((item, i) => (
+          {checklistItems.length > 0 ? checklistItems.map((item, i) => (
             <div key={i} className="checklist-item">
               <div className="check-icon" style={{ background: item.done ? 'rgba(16,185,129,0.15)' : item.urgent ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)' }}>
                 {item.done ? '✅' : item.urgent ? '🔴' : '🔶'}
               </div>
               <span style={{ textDecoration: item.done ? 'line-through' : 'none', color: item.done ? 'var(--muted)' : 'var(--text)' }}>{item.text}</span>
             </div>
-          ))}
+          )) : (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px' }}>
+              🎉 Bạn đã hoàn thành tất cả tiêu chí!
+            </div>
+          )}
         </div>
 
         <div className="card fade-in">
           <div className="card-title">🤖 AI Mentor gợi ý</div>
           <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
             <p style={{ fontSize: '13px', color: 'var(--light)', lineHeight: 1.7 }}>
-              Chào {firstName}! Hồ sơ của bạn đã hoàn thành <strong style={{color:'var(--accent)'}}>{totalProgress}%</strong>. 
-              Bạn còn thiếu <strong style={{color:'var(--red)'}}>minh chứng tình nguyện</strong> – đây là tiêu chí 
-              quan trọng nhất cần bổ sung. Trường mình sắp có chiến dịch Mùa Hè Xanh, bạn nên đăng ký tham gia nhé! 🌿
+              {totalProgress === 0 ? (
+                <>Chào {firstName}! 👋 Chào mừng bạn đến với FiveGood Journey. Hãy bắt đầu bằng cách <strong style={{color:'var(--accent)'}}>upload minh chứng</strong> cho từng tiêu chí SV5T nhé! 🚀</>
+              ) : totalProgress >= 80 ? (
+                <>Tuyệt vời {firstName}! 🎉 Hồ sơ đã hoàn thành <strong style={{color:'var(--green)'}}>{totalProgress}%</strong>. Chỉ còn một chút nữa là đạt SV5T rồi!</>
+              ) : (
+                <>Chào {firstName}! Hồ sơ của bạn đã hoàn thành <strong style={{color:'var(--accent)'}}>{totalProgress}%</strong>. Hãy tiếp tục upload minh chứng cho các tiêu chí còn thiếu nhé! 💪</>
+              )}
             </p>
           </div>
           <Link href="/mentor" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
@@ -115,19 +191,27 @@ export default function DashboardPage() {
           <div className="card-title" style={{ marginBottom: 0 }}>📎 Minh chứng gần đây</div>
           <Link href="/upload" className="btn btn-primary" style={{ fontSize: '11px', padding: '6px 14px', textDecoration: 'none' }}>+ Upload mới</Link>
         </div>
-        {evidences.map(ev => (
+        {myEvidences.length > 0 ? myEvidences.map(ev => (
           <div key={ev.id} className="evidence-item">
             <div className="evidence-icon" style={{ background: ev.fileType === 'PDF' ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)' }}>
               {ev.fileType === 'PDF' ? '📄' : '🖼️'}
             </div>
             <div className="evidence-info">
               <div className="evidence-name">{ev.fileName}</div>
-              <div className="evidence-date">{ev.uploadedAt} · {criteria.find(c => c.id === ev.criteriaId)?.name}</div>
+              <div className="evidence-date">{ev.uploadedAt} · {myCriteria.find(c => c.id === ev.criteriaId)?.name}</div>
             </div>
             <span className={`validity-badge badge-${ev.aiValidity.toLowerCase()}`}>{ev.aiValidity}</span>
             <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: "'JetBrains Mono', monospace" }}>{ev.aiScore.toFixed(2)}</span>
           </div>
-        ))}
+        )) : (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📂</div>
+            <div style={{ fontSize: '13px', marginBottom: '8px' }}>Chưa có minh chứng nào</div>
+            <Link href="/upload" style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
+              Upload minh chứng đầu tiên →
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
