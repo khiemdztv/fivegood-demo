@@ -41,43 +41,25 @@ export default function UploadPage() {
     });
   };
 
-  // Render trang đầu tiên của PDF thành ảnh
-  const pdfToImage = async (file) => {
+  // Trích xuất text từ PDF bằng unpdf (không cần worker)
+  const extractPdfText = async (file) => {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
+      const { extractText, getDocumentProxy } = await import('unpdf');
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1);
+      const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
+      const { text } = await extractText(pdf, { mergePages: false });
 
-      const scale = 2;
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      let fullText = '';
+      const pages = text.slice(0, 3); // Tối đa 3 trang đầu
+      pages.forEach((pageText, i) => {
+        if (pageText.trim()) {
+          fullText += `[Trang ${i + 1}]\n${pageText.trim()}\n\n`;
+        }
+      });
 
-      await page.render({
-        canvasContext: canvas.getContext('2d'),
-        viewport,
-      }).promise;
-
-      // Resize nếu quá lớn
-      const maxSize = 1200;
-      if (canvas.width > maxSize || canvas.height > maxSize) {
-        const resized = document.createElement('canvas');
-        let w = canvas.width, h = canvas.height;
-        if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize; }
-        else { w = Math.round((w * maxSize) / h); h = maxSize; }
-        resized.width = w;
-        resized.height = h;
-        resized.getContext('2d').drawImage(canvas, 0, 0, w, h);
-        return resized.toDataURL('image/jpeg', 0.85);
-      }
-      return canvas.toDataURL('image/jpeg', 0.85);
+      return fullText.trim() || null;
     } catch (err) {
-      console.error('PDF render error:', err);
+      console.error('PDF text extraction error:', err);
       return null;
     }
   };
@@ -93,19 +75,20 @@ export default function UploadPage() {
     const result = await uploadEvidence(file, '20210001');
     setUploadInfo(result);
 
-    // 2. Chuyển file (ảnh hoặc PDF) thành base64 image cho AI Vision
+    // 2. Xử lý file: ảnh → nén base64, PDF → trích xuất text
     let fileBase64 = null;
+    let pdfText = null;
     try {
       if (file.type.startsWith('image/')) {
         fileBase64 = await compressImage(file);
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        fileBase64 = await pdfToImage(file);
+        pdfText = await extractPdfText(file);
       }
     } catch (e) {
       console.warn('Không xử lý được file:', e);
     }
 
-    // 3. Gọi Groq AI Vision phân tích NỘI DUNG THẬT
+    // 3. Gọi Groq AI phân tích NỘI DUNG THẬT
     const selectedC = criteria.find(c => c.id === selectedCriteria);
     try {
       const res = await fetch('/api/ocr', {
@@ -117,6 +100,7 @@ export default function UploadPage() {
           fileSize: (file.size / 1024 / 1024).toFixed(2),
           criteriaName: selectedC?.name || 'SV5T',
           fileBase64: fileBase64,
+          pdfText: pdfText,
         }),
       });
 
