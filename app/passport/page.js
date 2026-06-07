@@ -1,8 +1,19 @@
 'use client';
+import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 
 export default function PassportPage() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
+  const [isEditingStats, setIsEditingStats] = useState(false);
+  const [gpa, setGpa] = useState(user?.gpa || '');
+  const [trainingScore, setTrainingScore] = useState(user?.trainingScore || '');
+
+  const handleSaveStats = () => {
+    const updatedUser = { ...user, gpa, trainingScore };
+    login(updatedUser);
+    setIsEditingStats(false);
+  };
+
   if (!user) return null;
   return (
     <div className="page-container">
@@ -35,12 +46,32 @@ export default function PassportPage() {
 
         {/* Achievements */}
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>🏅 Thành tích nổi bật</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏅 Thành tích nổi bật</div>
+            <button onClick={() => setIsEditingStats(!isEditingStats)} className="btn" style={{ fontSize: '10px', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', color: 'var(--light)', border: '1px solid var(--border)' }}>✏️ Cập nhật điểm</button>
+          </div>
+
+          {isEditingStats && (
+            <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end', border: '1px dashed var(--border)' }}>
+              <div>
+                <label style={{ fontSize: '10px', display: 'block', marginBottom: '4px', color: 'var(--light)' }}>GPA (Hệ 4.0)</label>
+                <input type="number" step="0.01" value={gpa} onChange={e => setGpa(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '4px', width: '80px', fontSize: '12px' }} placeholder="VD: 3.6" />
+              </div>
+              <div>
+                <label style={{ fontSize: '10px', display: 'block', marginBottom: '4px', color: 'var(--light)' }}>Điểm rèn luyện</label>
+                <input type="number" value={trainingScore} onChange={e => setTrainingScore(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '4px', width: '80px', fontSize: '12px' }} placeholder="VD: 90" />
+              </div>
+              <div>
+                <button onClick={handleSaveStats} className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }}>Lưu</button>
+              </div>
+            </div>
+          )}
+
           <div className="achievements-grid">
             <div className="achievement-item">
               <div className="achievement-icon">📚</div>
               <div className="achievement-label">GPA</div>
-              <div className="achievement-value">Chưa cập nhật</div>
+              <div className="achievement-value" style={{ color: user.gpa ? 'var(--text)' : 'var(--muted)' }}>{user.gpa ? `${user.gpa} / 4.0` : 'Chưa cập nhật'}</div>
             </div>
             <div className="achievement-item">
               <div className="achievement-icon">🌍</div>
@@ -65,7 +96,7 @@ export default function PassportPage() {
             <div className="achievement-item">
               <div className="achievement-icon">🌟</div>
               <div className="achievement-label">Rèn luyện</div>
-              <div className="achievement-value">Chưa có</div>
+              <div className="achievement-value" style={{ color: user.trainingScore ? 'var(--text)' : 'var(--muted)' }}>{user.trainingScore ? `${user.trainingScore} / 100` : 'Chưa có'}</div>
             </div>
           </div>
         </div>
