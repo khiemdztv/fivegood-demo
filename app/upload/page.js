@@ -14,13 +14,69 @@ export default function UploadPage() {
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
 
-  const readFileAsBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  // Nén ảnh về max 1200px để Groq Vision xử lý được
+  const compressImage = (file, maxSize = 1200) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
+            else { width = Math.round((width * maxSize) / height); height = maxSize; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve(null);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     });
+  };
+
+  // Render trang đầu tiên của PDF thành ảnh
+  const pdfToImage = async (file) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+
+      const scale = 2; // Render ở 2x cho rõ nét
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // Resize nếu quá lớn
+      const maxSize = 1200;
+      if (canvas.width > maxSize || canvas.height > maxSize) {
+        const resized = document.createElement('canvas');
+        let w = canvas.width, h = canvas.height;
+        if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize; }
+        else { w = Math.round((w * maxSize) / h); h = maxSize; }
+        resized.width = w;
+        resized.height = h;
+        resized.getContext('2d').drawImage(canvas, 0, 0, w, h);
+        return resized.toDataURL('image/jpeg', 0.85);
+      }
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } catch (err) {
+      console.error('PDF render error:', err);
+      return null;
+    }
   };
 
   const processFile = async (file) => {
@@ -34,14 +90,16 @@ export default function UploadPage() {
     const result = await uploadEvidence(file, '20210001');
     setUploadInfo(result);
 
-    // 2. Đọc file thành base64 để gửi cho AI Vision
+    // 2. Chuyển file (ảnh hoặc PDF) thành base64 image cho AI Vision
     let fileBase64 = null;
     try {
       if (file.type.startsWith('image/')) {
-        fileBase64 = await readFileAsBase64(file);
+        fileBase64 = await compressImage(file);
+      } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        fileBase64 = await pdfToImage(file);
       }
     } catch (e) {
-      console.warn('Không đọc được file base64:', e);
+      console.warn('Không xử lý được file:', e);
     }
 
     // 3. Gọi Groq AI Vision phân tích NỘI DUNG THẬT
@@ -142,7 +200,7 @@ export default function UploadPage() {
             <div className="card fade-in" style={{ textAlign: 'center', padding: '48px' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'spin 2s linear infinite' }}>⚙️</div>
               <h3 style={{ marginBottom: '8px' }}>Đang phân tích {fileName}...</h3>
-              <p style={{ color: 'var(--muted)', fontSize: '12px', marginBottom: '16px' }}>Groq Vision (Llama 3.2 90B) đang đọc nội dung thật từ file</p>
+              <p style={{ color: 'var(--muted)', fontSize: '12px', marginBottom: '16px' }}>Groq Vision (Llama 4 Scout) đang đọc nội dung thật từ file</p>
             </div>
           )}
 
@@ -229,7 +287,7 @@ export default function UploadPage() {
                 { step: '1', label: 'Chọn file ảnh/PDF', color: 'var(--accent)' },
                 { step: '2', label: 'Upload → Supabase', badge: 'Supabase', color: '#3ecf8e' },
                 { step: '3', label: 'AI Vision đọc nội dung', badge: 'Vision', color: '#10b981' },
-                { step: '4', label: 'Bóc tách fields thật', badge: 'Llama 3.2', color: '#8b5cf6' },
+                { step: '4', label: 'Bóc tách fields thật', badge: 'Llama 4', color: '#8b5cf6' },
                 { step: '5', label: 'Scoring + trả kết quả', color: 'var(--green)' },
               ].map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
