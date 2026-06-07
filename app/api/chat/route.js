@@ -29,6 +29,33 @@ const SYSTEM_PROMPT = `Bạn là "FiveGood AI Mentor" – trợ lý AI cá nhân
 - Luôn nhắc deadline nếu phù hợp
 - Kết thúc bằng gợi ý hành động cụ thể`;
 
+const REVIEWER_PROMPT = `Bạn là "FiveGood AI Copilot" – trợ lý nghiệp vụ quản lý hồ sơ "Sinh viên 5 Tốt" (SV5T) dành cho Cán bộ Hội.
+
+## Vai trò
+- Truy xuất và báo cáo dữ liệu từ cơ sở dữ liệu hồ sơ
+- Cảnh báo các trường hợp rủi ro cao (AI Risk: SUSPECT) cần xử lý
+- Cung cấp số liệu thống kê tiến độ theo thời gian thực
+
+## Context Dữ liệu (Giả lập CSDL/RAG)
+- **Tổng số hồ sơ đang xét duyệt:** 1,245 hồ sơ
+- **Hồ sơ nộp mới hôm nay:** 42 hồ sơ
+- **Phân loại AI Risk:**
+  + 1,100 hồ sơ Hợp lệ (VALID) 🟢
+  + 120 hồ sơ Thiếu/Sai sót nhẹ (WARNING) 🟡
+  + 25 hồ sơ Nghi vấn (SUSPECT) 🔴 (Cần kiểm tra thủ công gấp)
+- **Tiến độ thu hồ sơ theo Khoa:**
+  + Khoa CNTT: 320 hồ sơ, hoàn thành 80% chỉ tiêu.
+  + Khoa QTKD: 450 hồ sơ, hoàn thành 95% chỉ tiêu.
+  + Khoa Ngoại ngữ: 115 hồ sơ, hoàn thành 45% chỉ tiêu (đang chậm, cần đôn đốc).
+- **Các trường hợp SUSPECT nổi bật cần chú ý:**
+  + Trần B (MSSV 20002 - QTKD): Giấy chứng nhận tình nguyện scan mờ, thiếu đơn vị cấp.
+  + Lê C (MSSV 20003 - Luật): Bảng điểm tải lên bị nghi ngờ chỉnh sửa (chữ không khớp font).
+
+## Quy tắc
+- Trả lời bằng tiếng Việt, ngắn gọn, mang phong cách chuyên nghiệp, khách quan của hệ thống quản trị.
+- Tuyệt đối bám sát dữ liệu Context ở trên, KHÔNG tự bịa thêm số liệu.
+- Định dạng dữ liệu bằng bullet points hoặc số in đậm để cán bộ dễ đọc lướt.`;
+
 export async function POST(request) {
   const apiKey = process.env.GROQ_API_KEY;
 
@@ -40,18 +67,26 @@ export async function POST(request) {
   }
 
   try {
-    const { messages, userName, userInfo } = await request.json();
+    const { messages, userName, userInfo, userRole } = await request.json();
 
     const groq = new Groq({ apiKey });
 
-    // Cá nhân hóa system prompt với tên user thật
-    const personalizedPrompt = SYSTEM_PROMPT.replace(
-      '## Thông tin sinh viên hiện tại\n- Tên: Nguyễn Minh Anh, MSSV: 20210001\n- Khoa CNTT, ĐH Bách Khoa TP.HCM, GPA: 3.65',
-      `## Thông tin sinh viên hiện tại\n- Tên: ${userName || 'Sinh viên'}\n- ${userInfo || 'Đang chuẩn bị hồ sơ SV5T'}`
-    );
+    let finalSystemPrompt = SYSTEM_PROMPT;
+
+    if (userRole === 'reviewer') {
+      finalSystemPrompt = REVIEWER_PROMPT.replace(
+        'Cán bộ Hội',
+        `Cán bộ Hội (${userName || 'Quản trị viên'})`
+      );
+    } else {
+      finalSystemPrompt = SYSTEM_PROMPT.replace(
+        '## Thông tin sinh viên hiện tại\n- Tên: Nguyễn Minh Anh, MSSV: 20210001\n- Khoa CNTT, ĐH Bách Khoa TP.HCM, GPA: 3.65',
+        `## Thông tin sinh viên hiện tại\n- Tên: ${userName || 'Sinh viên'}\n- ${userInfo || 'Đang chuẩn bị hồ sơ SV5T'}`
+      );
+    }
 
     const chatMessages = [
-      { role: 'system', content: personalizedPrompt },
+      { role: 'system', content: finalSystemPrompt },
       ...messages.map(m => ({
         role: m.role === 'bot' ? 'assistant' : 'user',
         content: m.text,

@@ -3,20 +3,38 @@ import { useState, useRef, useEffect } from 'react';
 import { criteria } from '@/data/mockData';
 import { useAuth } from '@/lib/auth';
 
-const suggestions = [
+const studentSuggestions = [
   'Em còn thiếu tiêu chí nào?',
   'Minh chứng giấy khen CLB có dùng được không?',
   'Em có IELTS 6.5, cần thêm gì cho tiêu chí Hội nhập?',
-  'Hồ sơ em đang ở trạng thái nào rồi?',
-  'Làm sao để nộp hồ sơ SV5T?',
-  'Tiêu chí Tình nguyện cần những gì?',
+  'Hồ sơ em đang ở trạng thái nào rồi?'
+];
+
+const reviewerSuggestions = [
+  'Hôm nay có bao nhiêu hồ sơ nộp mới?',
+  'Liệt kê các sinh viên có rủi ro (SUSPECT) cần duyệt',
+  'Tiến độ nộp minh chứng của Khoa CNTT đạt bao nhiêu %?',
+  'Tóm tắt số liệu các hồ sơ đã duyệt trong tuần này'
 ];
 
 export default function MentorPage() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Xin chào! 👋 Mình là **AI Mentor** của FiveGood Journey, được hỗ trợ bởi **Groq AI (Llama 3.3 70B)**.\n\nMình có thể giúp bạn:\n- 📋 Kiểm tra tiến độ hồ sơ SV5T\n- 📎 Hướng dẫn chuẩn bị minh chứng\n- ❓ Giải đáp thắc mắc về quy trình\n\nHãy hỏi mình bất cứ điều gì! 🚀' }
-  ]);
+  const isReviewer = user?.role === 'reviewer';
+
+  const [messages, setMessages] = useState([]);
+  
+  useEffect(() => {
+    if (user) {
+      setMessages([
+        { 
+          role: 'bot', 
+          text: user.role === 'reviewer'
+            ? 'Xin chào! 👋 Mình là **AI Copilot** dành riêng cho Cán bộ Hội, tích hợp **Truy vấn Cơ sở dữ liệu (RAG)** qua **Groq AI**.\n\nMình có thể giúp bạn:\n- 📊 Báo cáo thống kê tiến độ nộp hồ sơ\n- ⚠️ Rà soát các hồ sơ có mức độ rủi ro cao (SUSPECT)\n- 📋 Tra cứu nhanh trạng thái theo sinh viên hoặc khoa\n\nHãy yêu cầu mình nhé! 🚀'
+            : 'Xin chào! 👋 Mình là **AI Mentor** của FiveGood Journey, được hỗ trợ bởi **Groq AI (Llama 3.3 70B)**.\n\nMình có thể giúp bạn:\n- 📋 Kiểm tra tiến độ hồ sơ SV5T\n- 📎 Hướng dẫn chuẩn bị minh chứng\n- ❓ Giải đáp thắc mắc về quy trình\n\nHãy hỏi mình bất cứ điều gì! 🚀' 
+        }
+      ]);
+    }
+  }, [user]);
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
   const [usedSuggestions, setUsedSuggestions] = useState([]);
@@ -35,6 +53,7 @@ export default function MentorPage() {
           messages: allMessages,
           userName: user?.name,
           userInfo: user?.sub,
+          userRole: user?.role,
         }),
       });
       const data = await res.json();
@@ -70,7 +89,8 @@ export default function MentorPage() {
     }
   };
 
-  const availableSuggestions = suggestions.filter(s => !usedSuggestions.includes(s));
+  const currentSuggestions = isReviewer ? reviewerSuggestions : studentSuggestions;
+  const availableSuggestions = currentSuggestions.filter(s => !usedSuggestions.includes(s));
 
   const formatText = (text) => {
     return text
@@ -83,8 +103,8 @@ export default function MentorPage() {
       <div className="section-header fade-in">
         <div className="section-num">🤖</div>
         <div>
-          <h2>AI Mentor</h2>
-          <p>Trợ lý AI cá nhân hóa – Powered by Groq · Llama 3.3 70B</p>
+          <h2>{isReviewer ? 'AI Copilot' : 'AI Mentor'}</h2>
+          <p>{isReviewer ? 'Trợ lý nghiệp vụ & Truy xuất dữ liệu' : 'Trợ lý AI cá nhân hóa'} – Powered by Groq · Llama 3.3 70B</p>
         </div>
       </div>
 
@@ -94,7 +114,7 @@ export default function MentorPage() {
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent3), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>🤖</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>FiveGood AI Mentor</div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>{isReviewer ? 'FiveGood AI Copilot' : 'FiveGood AI Mentor'}</div>
               <div style={{ fontSize: '11px', color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--green)', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
                 Groq AI · Llama 3.3 70B
