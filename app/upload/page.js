@@ -1,7 +1,8 @@
 'use client';
 import { useState, useRef } from 'react';
 import { criteria } from '@/data/mockData';
-import { uploadEvidence } from '@/lib/supabase';
+import { uploadEvidence, saveEvidence, updateCriteriaProgress } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 
 export default function UploadPage() {
   const [step, setStep] = useState('idle');
@@ -12,7 +13,10 @@ export default function UploadPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
+  const { user } = useAuth();
 
   // Nén ảnh về max 1200px để Groq Vision xử lý được
   const compressImage = (file, maxSize = 1200) => {
@@ -133,7 +137,41 @@ export default function UploadPage() {
   const handleDragOver = (e) => { e.preventDefault(); setIsDragOver(true); };
   const handleDragLeave = () => setIsDragOver(false);
 
-  const reset = () => { setStep('idle'); setFileName(''); setOcrResult(null); setError(null); };
+  const reset = () => { setStep('idle'); setFileName(''); setOcrResult(null); setError(null); setConfirmed(false); setSaving(false); };
+
+  const handleConfirm = async () => {
+    if (!ocrResult || saving || confirmed) return;
+    setSaving(true);
+
+    const dbId = user?.dbId || user?.id;
+    try {
+      // 1. Lưu evidence vào Supabase
+      await saveEvidence({
+        userId: dbId,
+        criteriaId: selectedCriteria,
+        fileName: fileName,
+        fileType: fileName.endsWith('.pdf') ? 'PDF' : 'IMAGE',
+        fileUrl: uploadInfo?.url || null,
+        aiValidity: ocrResult.aiValidity,
+        aiScore: ocrResult.aiScore,
+        extractedText: ocrResult.extractedText,
+        extractedFields: ocrResult.extractedFields,
+        criteriaMatch: ocrResult.criteriaMatch,
+        aiNote: ocrResult.note,
+      });
+
+      // 2. Cập nhật tiến độ criteria (tăng lên)
+      const newProgress = ocrResult.aiValidity === 'VALID' ? 100
+        : ocrResult.aiValidity === 'SUSPECT' ? 60 : 30;
+      await updateCriteriaProgress(dbId, selectedCriteria, newProgress);
+
+      setConfirmed(true);
+    } catch (err) {
+      console.error('Save error:', err);
+      setError('Lỗi lưu: ' + err.message);
+    }
+    setSaving(false);
+  };
 
   const validityColor = ocrResult?.aiValidity === 'VALID' ? 'var(--green)' : ocrResult?.aiValidity === 'SUSPECT' ? 'var(--yellow)' : 'var(--red)';
 
@@ -256,10 +294,25 @@ export default function UploadPage() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                  <button className="btn btn-approve" style={{ flex: 1, justifyContent: 'center' }}>✅ Xác nhận dùng minh chứng này</button>
-                  <button className="btn btn-update" onClick={reset}>🔄 Upload file khác</button>
-                </div>
+                {/* Confirm buttons */}
+                {confirmed ? (
+                  <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '16px', textAlign: 'center', marginTop: '16px' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎉</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--green)', marginBottom: '4px' }}>Đã lưu minh chứng thành công!</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Dữ liệu đã được ghi vào Supabase Database</div>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'center' }}>
+                      <button className="btn btn-primary" onClick={reset} style={{ fontSize: '12px' }}>📄 Upload thêm minh chứng</button>
+                      <button className="btn btn-update" onClick={() => window.location.href = '/dashboard'} style={{ fontSize: '12px' }}>📊 Xem Dashboard</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                    <button className="btn btn-approve" style={{ flex: 1, justifyContent: 'center', opacity: saving ? 0.6 : 1 }} onClick={handleConfirm} disabled={saving}>
+                      {saving ? '⏳ Đang lưu...' : '✅ Xác nhận dùng minh chứng này'}
+                    </button>
+                    <button className="btn btn-update" onClick={reset}>🔄 Upload file khác</button>
+                  </div>
+                )}
               </div>
             </div>
           )}
