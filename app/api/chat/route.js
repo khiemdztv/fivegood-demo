@@ -40,12 +40,18 @@ export async function POST(request) {
   }
 
   try {
-    const { messages } = await request.json();
+    const { messages, userName, userInfo } = await request.json();
 
     const groq = new Groq({ apiKey });
 
+    // Cá nhân hóa system prompt với tên user thật
+    const personalizedPrompt = SYSTEM_PROMPT.replace(
+      '## Thông tin sinh viên hiện tại\n- Tên: Nguyễn Minh Anh, MSSV: 20210001\n- Khoa CNTT, ĐH Bách Khoa TP.HCM, GPA: 3.65',
+      `## Thông tin sinh viên hiện tại\n- Tên: ${userName || 'Sinh viên'}\n- ${userInfo || 'Đang chuẩn bị hồ sơ SV5T'}`
+    );
+
     const chatMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: personalizedPrompt },
       ...messages.map(m => ({
         role: m.role === 'bot' ? 'assistant' : 'user',
         content: m.text,

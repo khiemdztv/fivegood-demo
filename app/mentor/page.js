@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { criteria } from '@/data/mockData';
+import { useAuth } from '@/lib/auth';
 
 const suggestions = [
   'Em còn thiếu tiêu chí nào?',
@@ -12,6 +13,7 @@ const suggestions = [
 ];
 
 export default function MentorPage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState([
     { role: 'bot', text: 'Xin chào! 👋 Mình là **AI Mentor** của FiveGood Journey, được hỗ trợ bởi **Groq AI (Llama 3.3 70B)**.\n\nMình có thể giúp bạn:\n- 📋 Kiểm tra tiến độ hồ sơ SV5T\n- 📎 Hướng dẫn chuẩn bị minh chứng\n- ❓ Giải đáp thắc mắc về quy trình\n\nHãy hỏi mình bất cứ điều gì! 🚀' }
   ]);
@@ -29,7 +31,11 @@ export default function MentorPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: allMessages }),
+        body: JSON.stringify({
+          messages: allMessages,
+          userName: user?.name,
+          userInfo: user?.sub,
+        }),
       });
       const data = await res.json();
       return data.message;

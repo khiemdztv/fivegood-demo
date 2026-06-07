@@ -1,5 +1,6 @@
 'use client';
-import { criteria, evidences, currentStudent } from '@/data/mockData';
+import { criteria, evidences } from '@/data/mockData';
+import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 
 function CriteriaRing({ criterion }) {
@@ -32,7 +33,10 @@ function CriteriaRing({ criterion }) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const totalProgress = Math.round(criteria.reduce((s, c) => s + c.progress, 0) / criteria.length);
+  const displayName = user?.name || 'Sinh viên';
+  const firstName = displayName.split(' ').pop();
 
   return (
     <div className="page-container">
@@ -40,8 +44,8 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }} className="fade-in">
         <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>🎓</div>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Xin chào, {currentStudent.fullName}!</h1>
-          <p style={{ color: 'var(--muted)', fontSize: '13px' }}>{currentStudent.faculty} · {currentStudent.school} · GPA: {currentStudent.gpa}</p>
+          <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Xin chào, {displayName}!</h1>
+          <p style={{ color: 'var(--muted)', fontSize: '13px' }}>{user?.sub || ''}</p>
         </div>
       </div>
 
@@ -94,7 +98,7 @@ export default function DashboardPage() {
           <div className="card-title">🤖 AI Mentor gợi ý</div>
           <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
             <p style={{ fontSize: '13px', color: 'var(--light)', lineHeight: 1.7 }}>
-              Chào Minh Anh! Hồ sơ của bạn đã hoàn thành <strong style={{color:'var(--accent)'}}>72%</strong>. 
+              Chào {firstName}! Hồ sơ của bạn đã hoàn thành <strong style={{color:'var(--accent)'}}>{totalProgress}%</strong>. 
               Bạn còn thiếu <strong style={{color:'var(--red)'}}>minh chứng tình nguyện</strong> – đây là tiêu chí 
               quan trọng nhất cần bổ sung. Trường mình sắp có chiến dịch Mùa Hè Xanh, bạn nên đăng ký tham gia nhé! 🌿
             </p>
