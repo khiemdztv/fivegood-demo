@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { getUserEvidences } from '@/lib/supabase';
 
 const SYSTEM_PROMPT = `Bạn là "FiveGood AI Mentor" – trợ lý AI cá nhân hóa cho sinh viên đang chuẩn bị hồ sơ "Sinh viên 5 Tốt" (SV5T).
 
@@ -67,7 +68,7 @@ export async function POST(request) {
   }
 
   try {
-    const { messages, userName, userInfo, userRole } = await request.json();
+    const { messages, userName, userInfo, userRole, userId } = await request.json();
 
     const groq = new Groq({ apiKey });
 
@@ -79,7 +80,22 @@ export async function POST(request) {
         `Cán bộ Hội (${userName || 'Quản trị viên'})`
       );
     } else {
+      let userContext = '- Chưa tải lên minh chứng nào.';
+      if (userId) {
+        const evidences = await getUserEvidences(userId);
+        if (evidences && evidences.length > 0) {
+          userContext = evidences.map(e => `- Đã nộp: "${e.file_name}" (Tiêu chí: ${e.criteria_id}). Nhãn AI: ${e.ai_validity}`).join('\n');
+        }
+      }
+
+      // Thay thế dữ liệu mock về tiến độ bằng dữ liệu thật
       finalSystemPrompt = SYSTEM_PROMPT.replace(
+        '- Tiến độ: Đạo đức 100%, Học tập 85%, Thể lực 100%, Tình nguyện 45%, Hội nhập 60%\n- Còn thiếu: minh chứng NCKH, giấy xác nhận tình nguyện, hoạt động giao lưu quốc tế',
+        `## Minh chứng sinh viên đã nộp (Lấy từ DB)\n${userContext}`
+      );
+
+      // Thay thế thông tin cá nhân
+      finalSystemPrompt = finalSystemPrompt.replace(
         '## Thông tin sinh viên hiện tại\n- Tên: Nguyễn Minh Anh, MSSV: 20210001\n- Khoa CNTT, ĐH Bách Khoa TP.HCM, GPA: 3.65',
         `## Thông tin sinh viên hiện tại\n- Tên: ${userName || 'Sinh viên'}\n- ${userInfo || 'Đang chuẩn bị hồ sơ SV5T'}`
       );

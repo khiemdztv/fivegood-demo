@@ -54,6 +54,7 @@ export default function MentorPage() {
           userName: user?.name,
           userInfo: user?.sub,
           userRole: user?.role,
+          userId: user?.dbId || user?.mssv || '20210001',
         }),
       });
       const data = await res.json();
