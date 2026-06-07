@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk';
-import { getUserEvidences } from '@/lib/supabase';
+import { getUserEvidences, getAllUsers, getAllEvidences } from '@/lib/supabase';
 
 const SYSTEM_PROMPT = `Bạn là "FiveGood AI Mentor" – trợ lý AI cá nhân hóa cho sinh viên đang chuẩn bị hồ sơ "Sinh viên 5 Tốt" (SV5T).
 
@@ -75,9 +75,42 @@ export async function POST(request) {
     let finalSystemPrompt = SYSTEM_PROMPT;
 
     if (userRole === 'reviewer') {
+      let dbContext = '- Hiện tại chưa lấy được dữ liệu.';
+      const [allUsers, allEvidences] = await Promise.all([
+        getAllUsers(),
+        getAllEvidences()
+      ]);
+
+      if (allUsers && allEvidences) {
+        const evidencesByUser = {};
+        allEvidences.forEach(e => {
+          if (!evidencesByUser[e.user_id]) evidencesByUser[e.user_id] = [];
+          evidencesByUser[e.user_id].push(e);
+        });
+
+        const totalStudents = allUsers.length;
+        const totalEvidences = allEvidences.length;
+        const validCount = allEvidences.filter(e => e.ai_validity === 'VALID').length;
+        const suspectCount = allEvidences.filter(e => e.ai_validity === 'SUSPECT').length;
+        
+        let detailedStudents = allUsers.map(u => {
+          const uEvidences = evidencesByUser[u.mssv] || [];
+          const hasSuspect = uEvidences.some(e => e.ai_validity === 'SUSPECT');
+          return `- SV: ${u.name} (MSSV: ${u.mssv}, Khoa: ${u.faculty}). Đã nộp: ${uEvidences.length} tài liệu. Cảnh báo SUSPECT: ${hasSuspect ? 'CÓ' : 'KHÔNG'}`;
+        }).join('\n');
+
+        dbContext = `- **Tổng số sinh viên (Accounts):** ${totalStudents}
+- **Tổng số minh chứng đã nộp (System-wide):** ${totalEvidences}
+- **Thống kê AI Risk (Trạng thái hệ thống):** ${validCount} Hợp lệ (VALID), ${suspectCount} Nghi vấn (SUSPECT).
+- **Chi tiết dữ liệu từng sinh viên:**\n${detailedStudents}`;
+      }
+
       finalSystemPrompt = REVIEWER_PROMPT.replace(
         'Cán bộ Hội',
         `Cán bộ Hội (${userName || 'Quản trị viên'})`
+      ).replace(
+        /## Context Dữ liệu \(Giả lập CSDL\/RAG\)[\s\S]*?## Quy tắc/,
+        `## Context Dữ liệu (Realtime Database RAG)\n${dbContext}\n\n## Quy tắc`
       );
     } else {
       let userContext = '- Chưa tải lên minh chứng nào.';
