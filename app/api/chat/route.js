@@ -94,9 +94,9 @@ export async function POST(request) {
         const suspectCount = allEvidences.filter(e => e.ai_validity === 'SUSPECT').length;
         
         let detailedStudents = allUsers.map(u => {
-          const uEvidences = evidencesByUser[u.mssv] || [];
+          const uEvidences = evidencesByUser[u.id] || [];
           const hasSuspect = uEvidences.some(e => e.ai_validity === 'SUSPECT');
-          return `- SV: ${u.name} (MSSV: ${u.mssv}, Khoa: ${u.faculty}). Đã nộp: ${uEvidences.length} tài liệu. Cảnh báo SUSPECT: ${hasSuspect ? 'CÓ' : 'KHÔNG'}`;
+          return `- SV: ${u.name} (MSSV: ${u.mssv}, Khoa: ${u.faculty}). Số tài liệu đã nộp: ${uEvidences.length}. Cảnh báo SUSPECT: ${hasSuspect ? 'CÓ' : 'KHÔNG'}`;
         }).join('\n');
 
         dbContext = `- **Tổng số sinh viên (Accounts):** ${totalStudents}

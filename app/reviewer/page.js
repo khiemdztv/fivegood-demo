@@ -1,14 +1,63 @@
 'use client';
-import { useState } from 'react';
-import { reviewerApplications } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { getAllUsers, getAllEvidences } from '@/lib/supabase';
 
 export default function ReviewerPage() {
   const [selected, setSelected] = useState(null);
   const [filterRisk, setFilterRisk] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [actionDone, setActionDone] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = reviewerApplications.filter(a => {
+  useEffect(() => {
+    async function loadData() {
+      const [users, evidences] = await Promise.all([
+        getAllUsers(),
+        getAllEvidences()
+      ]);
+
+      if (users && evidences) {
+        const apps = users.map(u => {
+          const uEvs = evidences.filter(e => e.user_id === u.id);
+          const hasSuspect = uEvs.some(e => e.ai_validity === 'SUSPECT');
+          const hasWarning = uEvs.some(e => e.ai_validity === 'WARNING');
+          
+          const aiRiskLevel = hasSuspect ? 'HIGH' : (hasWarning ? 'MEDIUM' : 'LOW');
+          let overallScore = Math.min(100, uEvs.length * 20);
+          
+          let aiSummary = `Sinh viên đã nộp ${uEvs.length}/5 minh chứng. `;
+          if (hasSuspect) aiSummary += 'AI phát hiện tài liệu rủi ro cao (SUSPECT), cần cán bộ mở ra kiểm tra thủ công gấp!';
+          else if (hasWarning) aiSummary += 'AI cảnh báo một số tài liệu có thể sai sót (WARNING).';
+          else aiSummary += 'Chưa phát hiện rủi ro nào từ AI.';
+
+          return {
+            id: u.id,
+            studentCode: u.mssv,
+            fullName: u.name,
+            faculty: u.faculty,
+            status: uEvs.length > 0 ? 'UNDER_REVIEW' : 'SUBMITTED',
+            aiRiskLevel,
+            overallScore,
+            evidenceCount: uEvs.length,
+            criteriaStatus: {
+              c1: uEvs.some(e => e.criteria_id === 'c1') ? (uEvs.find(e=>e.criteria_id==='c1').ai_validity==='VALID'?'pass':'review') : 'fail',
+              c2: uEvs.some(e => e.criteria_id === 'c2') ? (uEvs.find(e=>e.criteria_id==='c2').ai_validity==='VALID'?'pass':'review') : 'fail',
+              c3: uEvs.some(e => e.criteria_id === 'c3') ? (uEvs.find(e=>e.criteria_id==='c3').ai_validity==='VALID'?'pass':'review') : 'fail',
+              c4: uEvs.some(e => e.criteria_id === 'c4') ? (uEvs.find(e=>e.criteria_id==='c4').ai_validity==='VALID'?'pass':'review') : 'fail',
+              c5: uEvs.some(e => e.criteria_id === 'c5') ? (uEvs.find(e=>e.criteria_id==='c5').ai_validity==='VALID'?'pass':'review') : 'fail',
+            },
+            aiSummary
+          };
+        });
+        setApplications(apps);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
+  const filtered = applications.filter(a => {
     if (filterRisk !== 'all' && a.aiRiskLevel !== filterRisk) return false;
     if (filterStatus !== 'all' && a.status !== filterStatus) return false;
     return true;
@@ -36,10 +85,10 @@ export default function ReviewerPage() {
 
       {/* Stats */}
       <div className="stats-grid fade-in">
-        <div className="stat-card"><div className="stat-value" style={{color:'var(--accent)'}}>{reviewerApplications.length}</div><div className="stat-label">Tổng hồ sơ</div></div>
-        <div className="stat-card"><div className="stat-value" style={{color:'var(--green)'}}>{reviewerApplications.filter(a=>a.aiRiskLevel==='LOW').length}</div><div className="stat-label">Risk thấp</div></div>
-        <div className="stat-card"><div className="stat-value" style={{color:'var(--yellow)'}}>{reviewerApplications.filter(a=>a.aiRiskLevel==='MEDIUM').length}</div><div className="stat-label">Risk trung bình</div></div>
-        <div className="stat-card"><div className="stat-value" style={{color:'var(--red)'}}>{reviewerApplications.filter(a=>a.aiRiskLevel==='HIGH').length}</div><div className="stat-label">Risk cao</div></div>
+        <div className="stat-card"><div className="stat-value" style={{color:'var(--accent)'}}>{applications.length}</div><div className="stat-label">Tổng hồ sơ</div></div>
+        <div className="stat-card"><div className="stat-value" style={{color:'var(--green)'}}>{applications.filter(a=>a.aiRiskLevel==='LOW').length}</div><div className="stat-label">Risk thấp</div></div>
+        <div className="stat-card"><div className="stat-value" style={{color:'var(--yellow)'}}>{applications.filter(a=>a.aiRiskLevel==='MEDIUM').length}</div><div className="stat-label">Risk trung bình</div></div>
+        <div className="stat-card"><div className="stat-value" style={{color:'var(--red)'}}>{applications.filter(a=>a.aiRiskLevel==='HIGH').length}</div><div className="stat-label">Risk cao</div></div>
       </div>
 
       {/* Filters */}
@@ -55,7 +104,7 @@ export default function ReviewerPage() {
           <option value="SUBMITTED">Đã nộp</option>
           <option value="UNDER_REVIEW">Đang duyệt</option>
         </select>
-        <div style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--muted)' }}>Kỳ xét: SV5T 2025–2026 · Hiển thị {filtered.length}/{reviewerApplications.length} hồ sơ</div>
+        <div style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--muted)' }}>Kỳ xét: SV5T 2025–2026 · Hiển thị {filtered.length}/{applications.length} hồ sơ</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 400px' : '1fr', gap: '20px' }}>
