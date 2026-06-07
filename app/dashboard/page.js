@@ -1,39 +1,20 @@
 'use client';
 import { criteria as defaultCriteria, evidences as demoEvidences } from '@/data/mockData';
 import { useAuth } from '@/lib/auth';
+import { getUserProgress, getUserEvidences } from '@/lib/supabase';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
-// Lấy dữ liệu riêng cho từng user từ localStorage
-function getUserData(userId) {
-  if (!userId) return null;
-  try {
-    const data = localStorage.getItem(`fg_data_${userId}`);
-    return data ? JSON.parse(data) : null;
-  } catch { return null; }
-}
+// Metadata cho criteria
+const CRITERIA_META = {
+  c1: { name: 'Đạo đức tốt', icon: '🌟', color: '#3b82f6' },
+  c2: { name: 'Học tập tốt', icon: '📚', color: '#8b5cf6' },
+  c3: { name: 'Thể lực tốt', icon: '💪', color: '#10b981' },
+  c4: { name: 'Tình nguyện tốt', icon: '❤️', color: '#ef4444' },
+  c5: { name: 'Hội nhập tốt', icon: '🌍', color: '#06b6d4' },
+};
 
-function saveUserData(userId, data) {
-  if (!userId) return;
-  localStorage.setItem(`fg_data_${userId}`, JSON.stringify(data));
-}
-
-// Tạo dữ liệu mới cho user mới (bắt đầu từ 0%)
-function createFreshUserData() {
-  return {
-    criteria: [
-      { id: 'c1', code: 'DAO_DUC', name: 'Đạo đức tốt', icon: '🌟', color: '#3b82f6', progress: 0, status: 'missing' },
-      { id: 'c2', code: 'HOC_TAP', name: 'Học tập tốt', icon: '📚', color: '#8b5cf6', progress: 0, status: 'missing' },
-      { id: 'c3', code: 'THE_LUC', name: 'Thể lực tốt', icon: '💪', color: '#10b981', progress: 0, status: 'missing' },
-      { id: 'c4', code: 'TINH_NGUYEN', name: 'Tình nguyện tốt', icon: '❤️', color: '#ef4444', progress: 0, status: 'missing' },
-      { id: 'c5', code: 'HOI_NHAP', name: 'Hội nhập tốt', icon: '🌍', color: '#06b6d4', progress: 0, status: 'missing' },
-    ],
-    evidences: [],
-    createdAt: new Date().toISOString(),
-  };
-}
-
-// Demo accounts dùng dữ liệu mock
+// Demo accounts dùng mock data
 const DEMO_MSSV = ['20210001', 'CB001'];
 
 function CriteriaRing({ criterion }) {
@@ -67,50 +48,82 @@ function CriteriaRing({ criterion }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [userData, setUserData] = useState(null);
+  const [myCriteria, setMyCriteria] = useState([]);
+  const [myEvidences, setMyEvidences] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
 
-    // Demo accounts dùng dữ liệu mock
+    // Demo accounts → dùng mock data
     if (DEMO_MSSV.includes(user.mssv)) {
-      setUserData({ criteria: defaultCriteria, evidences: demoEvidences });
+      setMyCriteria(defaultCriteria);
+      setMyEvidences(demoEvidences);
+      setLoading(false);
       return;
     }
 
-    // User thật: lấy dữ liệu riêng
-    let data = getUserData(user.id);
-    if (!data) {
-      data = createFreshUserData();
-      saveUserData(user.id, data);
-    }
-    setUserData(data);
+    // User thật → load từ Supabase
+    const loadData = async () => {
+      const dbId = user.dbId || user.id;
+      try {
+        const [progressData, evidenceData] = await Promise.all([
+          getUserProgress(dbId),
+          getUserEvidences(dbId),
+        ]);
+
+        // Map progress data + metadata
+        const criteriaList = (progressData || []).map(p => ({
+          ...p,
+          id: p.criteria_id,
+          ...CRITERIA_META[p.criteria_id],
+        }));
+
+        setMyCriteria(criteriaList);
+        setMyEvidences((evidenceData || []).map(e => ({
+          id: e.id,
+          criteriaId: e.criteria_id,
+          fileName: e.file_name,
+          fileType: e.file_type,
+          aiValidity: e.ai_validity,
+          aiScore: e.ai_score,
+          uploadedAt: new Date(e.created_at).toLocaleDateString('vi-VN'),
+        })));
+      } catch (err) {
+        console.error('Load data error:', err);
+        // Fallback: empty data
+        setMyCriteria(Object.entries(CRITERIA_META).map(([id, meta]) => ({
+          id, criteria_id: id, progress: 0, status: 'missing', ...meta,
+        })));
+        setMyEvidences([]);
+      }
+      setLoading(false);
+    };
+    loadData();
   }, [user]);
 
-  const myCriteria = userData?.criteria || [];
-  const myEvidences = userData?.evidences || [];
   const totalProgress = myCriteria.length > 0 ? Math.round(myCriteria.reduce((s, c) => s + c.progress, 0) / myCriteria.length) : 0;
   const displayName = user?.name || 'Sinh viên';
   const firstName = displayName.split(' ').pop();
 
-  // Tính checklist dựa trên tiến độ thật
   const todoItems = myCriteria
     .filter(c => c.progress < 100)
-    .map(c => ({
-      text: `Upload minh chứng cho tiêu chí "${c.name}"`,
-      done: false,
-      urgent: c.progress === 0,
-    }));
-
+    .map(c => ({ text: `Upload minh chứng cho tiêu chí "${c.name}"`, done: false, urgent: c.progress === 0 }));
   const doneItems = myCriteria
     .filter(c => c.progress >= 100)
-    .map(c => ({
-      text: `Tiêu chí "${c.name}" đã hoàn thành`,
-      done: true,
-      urgent: false,
-    }));
-
+    .map(c => ({ text: `Tiêu chí "${c.name}" đã hoàn thành`, done: true, urgent: false }));
   const checklistItems = [...todoItems, ...doneItems].slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', color: 'var(--muted)' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+          <div>Đang tải dữ liệu từ Supabase...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -160,9 +173,7 @@ export default function DashboardPage() {
               <span style={{ textDecoration: item.done ? 'line-through' : 'none', color: item.done ? 'var(--muted)' : 'var(--text)' }}>{item.text}</span>
             </div>
           )) : (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px' }}>
-              🎉 Bạn đã hoàn thành tất cả tiêu chí!
-            </div>
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px' }}>🎉 Bạn đã hoàn thành tất cả tiêu chí!</div>
           )}
         </div>
 
@@ -179,9 +190,7 @@ export default function DashboardPage() {
               )}
             </p>
           </div>
-          <Link href="/mentor" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
-            💬 Hỏi AI Mentor
-          </Link>
+          <Link href="/mentor" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>💬 Hỏi AI Mentor</Link>
         </div>
       </div>
 
@@ -200,16 +209,14 @@ export default function DashboardPage() {
               <div className="evidence-name">{ev.fileName}</div>
               <div className="evidence-date">{ev.uploadedAt} · {myCriteria.find(c => c.id === ev.criteriaId)?.name}</div>
             </div>
-            <span className={`validity-badge badge-${ev.aiValidity.toLowerCase()}`}>{ev.aiValidity}</span>
-            <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: "'JetBrains Mono', monospace" }}>{ev.aiScore.toFixed(2)}</span>
+            <span className={`validity-badge badge-${(ev.aiValidity || 'suspect').toLowerCase()}`}>{ev.aiValidity}</span>
+            <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: "'JetBrains Mono', monospace" }}>{(ev.aiScore || 0).toFixed(2)}</span>
           </div>
         )) : (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>📂</div>
             <div style={{ fontSize: '13px', marginBottom: '8px' }}>Chưa có minh chứng nào</div>
-            <Link href="/upload" style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
-              Upload minh chứng đầu tiên →
-            </Link>
+            <Link href="/upload" style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>Upload minh chứng đầu tiên →</Link>
           </div>
         )}
       </div>

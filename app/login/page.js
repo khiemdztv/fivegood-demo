@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', mssv: '', school: '', faculty: '' });
   const [error, setError] = useState('');
 
+  const [regLoading, setRegLoading] = useState(false);
+
   const handleQuickLogin = (role) => {
     const defaults = {
       student: { name: 'Nguyễn Minh Anh', mssv: '20210001', school: 'ĐH Bách Khoa TP.HCM', faculty: 'Khoa CNTT' },
@@ -26,15 +28,22 @@ export default function LoginPage() {
     router.push(rd.homePath);
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.school.trim()) {
       setError('Vui lòng điền đầy đủ họ tên và trường');
       return;
     }
-    const newUser = register(form.name, form.mssv, form.school, form.faculty, regRole);
-    login(newUser);
-    router.push(newUser.homePath);
+    setRegLoading(true);
+    setError('');
+    try {
+      const newUser = await register(form.name, form.mssv, form.school, form.faculty, regRole);
+      login(newUser);
+      router.push(newUser.homePath);
+    } catch (err) {
+      setError('Đăng ký thất bại: ' + err.message);
+      setRegLoading(false);
+    }
   };
 
   const handleSelectAccount = (user) => {
