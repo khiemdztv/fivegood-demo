@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 
 export default function PassportPage() {
@@ -7,6 +7,84 @@ export default function PassportPage() {
   const [isEditingStats, setIsEditingStats] = useState(false);
   const [gpa, setGpa] = useState(user?.gpa || '');
   const [trainingScore, setTrainingScore] = useState(user?.trainingScore || '');
+  
+  // AI Scanning state
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [scanningType, setScanningType] = useState('');
+  const fileInputRef = useRef(null);
+
+  const compressImage = (file, maxSize = 1200) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
+            else { width = Math.round((width * maxSize) / height); height = maxSize; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve(null);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleScanClick = (type) => {
+    setScanningType(type);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsScanning(true);
+    setScanResult(null);
+
+    const base64 = await compressImage(file);
+    if (!base64) {
+      setIsScanning(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/verify-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileBase64: base64,
+          expectedSchool: user?.school || '',
+          expectedName: user?.name || '',
+          scoreType: scanningType
+        })
+      });
+
+      const data = await res.json();
+      setScanResult({ type: scanningType, ...data });
+      
+      if (data.isAuthentic && data.schoolMatch && data.extractedScore) {
+        if (scanningType === 'GPA') setGpa(data.extractedScore);
+        else setTrainingScore(data.extractedScore);
+      }
+    } catch (err) {
+      console.error(err);
+      setScanResult({ type: scanningType, isAuthentic: false, schoolMatch: false, note: 'Lỗi kết nối máy chủ.' });
+    }
+    
+    setIsScanning(false);
+    e.target.value = '';
+  };
 
   const handleSaveStats = () => {
     const updatedUser = { ...user, gpa, trainingScore };
@@ -52,17 +130,44 @@ export default function PassportPage() {
           </div>
 
           {isEditingStats && (
-            <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end', border: '1px dashed var(--border)' }}>
-              <div>
-                <label style={{ fontSize: '10px', display: 'block', marginBottom: '4px', color: 'var(--light)' }}>GPA (Hệ 4.0)</label>
-                <input type="number" step="0.01" value={gpa} onChange={e => setGpa(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '4px', width: '80px', fontSize: '12px' }} placeholder="VD: 3.6" />
+            <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px dashed var(--border)' }}>
+              
+              {/* Hidden File Input */}
+              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+
+              {/* Status Message */}
+              {isScanning && (
+                <div style={{ padding: '8px', background: 'rgba(59,130,246,0.1)', color: 'var(--accent)', borderRadius: '4px', marginBottom: '12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="spinner" style={{ width: '12px', height: '12px' }}></div>
+                  AI đang quét bảng điểm của {user?.name}...
+                </div>
+              )}
+              {scanResult && !isScanning && (
+                <div style={{ padding: '8px', background: scanResult.isAuthentic && scanResult.schoolMatch ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: scanResult.isAuthentic && scanResult.schoolMatch ? 'var(--green)' : 'var(--red)', borderRadius: '4px', marginBottom: '12px', fontSize: '11px' }}>
+                  <strong>{scanResult.isAuthentic && scanResult.schoolMatch ? '✅ Xác thực thành công:' : '⚠️ Cảnh báo AI:'}</strong> {scanResult.note}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)' }}>GPA (Hệ 4.0)</label>
+                    <button onClick={() => handleScanClick('GPA')} className="btn" style={{ fontSize: '9px', padding: '2px 6px', background: 'var(--accent)', color: 'white' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="number" step="0.01" value={gpa} onChange={e => setGpa(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '14px' }} placeholder="VD: 3.6" />
+                </div>
+                
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)' }}>Điểm rèn luyện</label>
+                    <button onClick={() => handleScanClick('Điểm rèn luyện')} className="btn" style={{ fontSize: '9px', padding: '2px 6px', background: 'var(--accent)', color: 'white' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="number" value={trainingScore} onChange={e => setTrainingScore(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '14px' }} placeholder="VD: 90" />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: '10px', display: 'block', marginBottom: '4px', color: 'var(--light)' }}>Điểm rèn luyện</label>
-                <input type="number" value={trainingScore} onChange={e => setTrainingScore(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '4px', width: '80px', fontSize: '12px' }} placeholder="VD: 90" />
-              </div>
-              <div>
-                <button onClick={handleSaveStats} className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }}>Lưu</button>
+
+              <div style={{ marginTop: '16px', textAlign: 'right' }}>
+                <button onClick={handleSaveStats} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 'bold' }}>💾 Lưu thay đổi</button>
               </div>
             </div>
           )}
