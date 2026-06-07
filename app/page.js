@@ -1,12 +1,14 @@
 import Link from 'next/link';
 
 const features = [
-  { icon: '🤖', title: 'AI Mentor cá nhân hóa', desc: 'Trợ lý AI hiểu trạng thái hồ sơ, gợi ý hành động tiếp theo, trả lời theo context cụ thể của từng sinh viên.', color: '#8b5cf6', href: '/mentor' },
-  { icon: '📊', title: 'Journey Dashboard', desc: 'Dashboard trực quan 5 tiêu chí với progress ring, checklist, milestone – biến quy trình hành chính thành hành trình phấn đấu.', color: '#3b82f6', href: '/dashboard' },
-  { icon: '🔍', title: 'Evidence Intelligence', desc: 'OCR + AI phân loại minh chứng tự động. Bóc tách thông tin, gắn nhãn Valid/Suspect/Invalid, đưa risk score.', color: '#06b6d4', href: '/upload' },
-  { icon: '🏛️', title: 'Reviewer Copilot', desc: 'Dashboard AI-assisted cho cán bộ Hội: lọc theo risk, xem AI summary, duyệt nhanh với audit log tự động.', color: '#10b981', href: '/reviewer' },
-  { icon: '🎫', title: 'Digital Passport', desc: 'Hồ sơ năng lực số sau khi đạt danh hiệu – timeline, thành tích, QR chia sẻ. Giá trị vượt khỏi phần mềm nội bộ.', color: '#f59e0b', href: '/passport' },
+  { icon: '🤖', title: 'AI Mentor cá nhân hóa', desc: 'Trợ lý AI hiểu trạng thái hồ sơ, gợi ý hành động tiếp theo, trả lời theo context cụ thể của từng sinh viên.', color: '#8b5cf6', href: '/mentor', side: 'sv' },
+  { icon: '📊', title: 'Journey Dashboard', desc: 'Dashboard trực quan 5 tiêu chí với progress ring, checklist, milestone – biến quy trình hành chính thành hành trình phấn đấu.', color: '#3b82f6', href: '/dashboard', side: 'sv' },
+  { icon: '🔍', title: 'Evidence Intelligence', desc: 'OCR + AI phân loại minh chứng tự động. Bóc tách thông tin, gắn nhãn Valid/Suspect/Invalid, đưa risk score.', color: '#06b6d4', href: '/upload', side: 'both' },
+  { icon: '🏛️', title: 'Reviewer Copilot', desc: 'Dashboard AI-assisted cho cán bộ Hội: AI summary, phân loại risk, duyệt nhanh với audit log tự động.', color: '#10b981', href: '/reviewer', side: 'cb' },
+  { icon: '📈', title: 'Thống kê & Batch Processing', desc: 'Quản lý hàng ngàn hồ sơ, duyệt hàng loạt, phân tích theo khoa, báo cáo cho cấp Trung ương.', color: '#f59e0b', href: '/analytics', side: 'cb' },
+  { icon: '🎫', title: 'Digital Passport', desc: 'Hồ sơ năng lực số sau khi đạt danh hiệu – timeline, thành tích, QR chia sẻ.', color: '#ec4899', href: '/passport', side: 'sv' },
 ];
+
 
 const compareData = [
   { aspect: 'Hướng dẫn sinh viên', before: 'FAQ thủ công / file PDF', after: 'AI Mentor cá nhân hóa' },
@@ -35,8 +37,7 @@ export default function HomePage() {
           <div className="hero-chip">📅 HackAIthon 2026</div>
         </div>
         <div className="cta-row">
-          <Link href="/dashboard" className="cta-btn cta-btn--primary">🎓 Xem Dashboard Sinh viên</Link>
-          <Link href="/reviewer" className="cta-btn cta-btn--secondary">🏛️ Xem Dashboard Reviewer</Link>
+          <Link href="/login" className="cta-btn cta-btn--primary">🚀 Đăng nhập Demo</Link>
           <Link href="/architecture" className="cta-btn cta-btn--secondary">📐 Kiến trúc hệ thống</Link>
         </div>
       </div>
@@ -75,8 +76,15 @@ export default function HomePage() {
           {features.map((f, i) => (
             <Link href={f.href} key={i} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="feature-card">
-                <div className="feature-icon" style={{ background: `${f.color}15`, border: `1px solid ${f.color}40` }}>
-                  {f.icon}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                  <div className="feature-icon" style={{ background: `${f.color}15`, border: `1px solid ${f.color}40`, marginBottom: 0 }}>
+                    {f.icon}
+                  </div>
+                  <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', letterSpacing: '0.05em',
+                    background: f.side === 'sv' ? 'rgba(59,130,246,0.12)' : f.side === 'cb' ? 'rgba(139,92,246,0.12)' : 'rgba(6,182,212,0.12)',
+                    color: f.side === 'sv' ? 'var(--accent)' : f.side === 'cb' ? 'var(--accent3)' : 'var(--accent2)',
+                    border: `1px solid ${f.side === 'sv' ? 'rgba(59,130,246,0.25)' : f.side === 'cb' ? 'rgba(139,92,246,0.25)' : 'rgba(6,182,212,0.25)'}`,
+                  }}>{f.side === 'sv' ? 'SINH VIÊN' : f.side === 'cb' ? 'CÁN BỘ HỘI' : 'CẢ HAI'}</span>
                 </div>
                 <h3 style={{ color: f.color }}>{f.title}</h3>
                 <p>{f.desc}</p>

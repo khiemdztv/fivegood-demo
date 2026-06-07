@@ -1,0 +1,179 @@
+'use client';
+import { useState, useRef, useEffect } from 'react';
+import { criteria } from '@/data/mockData';
+
+const suggestions = [
+  'Em còn thiếu tiêu chí nào?',
+  'Minh chứng giấy khen CLB có dùng được không?',
+  'Em có IELTS 6.5, cần thêm gì cho tiêu chí Hội nhập?',
+  'Hồ sơ em đang ở trạng thái nào rồi?',
+  'Làm sao để nộp hồ sơ SV5T?',
+  'Tiêu chí Tình nguyện cần những gì?',
+];
+
+export default function MentorPage() {
+  const [messages, setMessages] = useState([
+    { role: 'bot', text: 'Xin chào! 👋 Mình là **AI Mentor** của FiveGood Journey, được hỗ trợ bởi **Groq AI (Llama 3.3 70B)**.\n\nMình có thể giúp bạn:\n- 📋 Kiểm tra tiến độ hồ sơ SV5T\n- 📎 Hướng dẫn chuẩn bị minh chứng\n- ❓ Giải đáp thắc mắc về quy trình\n\nHãy hỏi mình bất cứ điều gì! 🚀' }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [usedSuggestions, setUsedSuggestions] = useState([]);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  const sendToGroq = async (allMessages) => {
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: allMessages }),
+      });
+      const data = await res.json();
+      return data.message;
+    } catch {
+      return '❌ Không thể kết nối AI. Vui lòng kiểm tra GROQ_API_KEY trong .env.local và thử lại.';
+    }
+  };
+
+  const handleSend = async (text) => {
+    if (!text.trim() || isTyping) return;
+
+    const userMsg = { role: 'user', text: text.trim() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInputText('');
+    setIsTyping(true);
+
+    const reply = await sendToGroq(newMessages);
+    setIsTyping(false);
+    setMessages(prev => [...prev, { role: 'bot', text: reply }]);
+  };
+
+  const handleSuggestion = (text) => {
+    setUsedSuggestions(prev => [...prev, text]);
+    handleSend(text);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(inputText);
+    }
+  };
+
+  const availableSuggestions = suggestions.filter(s => !usedSuggestions.includes(s));
+
+  const formatText = (text) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+  };
+
+  return (
+    <div className="page-container">
+      <div className="section-header fade-in">
+        <div className="section-num">🤖</div>
+        <div>
+          <h2>AI Mentor</h2>
+          <p>Trợ lý AI cá nhân hóa – Powered by Groq · Llama 3.3 70B</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '650px' }}>
+          {/* Header */}
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent3), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>🤖</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>FiveGood AI Mentor</div>
+              <div style={{ fontSize: '11px', color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--green)', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
+                Groq AI · Llama 3.3 70B
+              </div>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            {messages.map((msg, i) => (
+              <div key={i} className={`chat-bubble chat-bubble--${msg.role === 'user' ? 'user' : 'bot'}`}
+                dangerouslySetInnerHTML={{ __html: formatText(msg.text) }} />
+            ))}
+            {isTyping && (
+              <div className="chat-bubble chat-bubble--bot">
+                <div className="typing-indicator">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Suggestions */}
+          {availableSuggestions.length > 0 && (
+            <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '6px' }}>💡 Câu hỏi gợi ý:</div>
+              <div className="chat-suggestions" style={{ paddingTop: 0, paddingBottom: 0 }}>
+                {availableSuggestions.slice(0, 3).map((s, i) => (
+                  <button key={i} className="chat-suggestion-btn" onClick={() => handleSuggestion(s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="chat-input-area" style={{ padding: '12px 20px' }}>
+            <input
+              className="chat-input"
+              placeholder="Nhập câu hỏi về SV5T..."
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button className="chat-send-btn" onClick={() => handleSend(inputText)} disabled={!inputText.trim() || isTyping}>
+              {isTyping ? '⏳' : '➤'}
+            </button>
+          </div>
+        </div>
+
+        {/* Context Panel */}
+        <div>
+          <div className="card fade-in">
+            <div className="card-title">📊 Trạng thái hồ sơ</div>
+            {criteria.map(c => (
+              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(36,48,80,0.4)' }}>
+                <span style={{ fontSize: '12px' }}>{c.icon} {c.name}</span>
+                <span className={`criteria-status status-${c.status}`} style={{ fontSize: '9px' }}>{c.progress}%</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card fade-in">
+            <div className="card-title">🔌 Công nghệ AI</div>
+            {[
+              { name: 'Groq', desc: 'Inference siêu nhanh', color: '#10b981' },
+              { name: 'Llama 3.3 70B', desc: 'LLM versatile', color: '#8b5cf6' },
+            ].map((api, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0' }}>
+                <span style={{ background: `${api.color}18`, color: api.color, padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{api.name}</span>
+                <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{api.desc}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card fade-in" style={{ background: 'rgba(59,130,246,0.05)', borderColor: 'rgba(59,130,246,0.2)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--light)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--accent)' }}>💡 Cách hoạt động:</strong><br />
+              AI Mentor dùng <strong style={{color:'var(--green)'}}>Groq</strong> (Llama 3.3 70B) với system prompt chứa đầy đủ context hồ sơ SV5T. Vòng 2 sẽ tích hợp VNPT Smartbot (RAG) + SmartVoice (STT/TTS).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
