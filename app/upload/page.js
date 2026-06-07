@@ -14,6 +14,15 @@ export default function UploadPage() {
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
 
+  const readFileAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const processFile = async (file) => {
     if (!file) return;
     setFileName(file.name);
@@ -25,7 +34,17 @@ export default function UploadPage() {
     const result = await uploadEvidence(file, '20210001');
     setUploadInfo(result);
 
-    // 2. Gọi Groq AI phân tích qua API route /api/ocr
+    // 2. Đọc file thành base64 để gửi cho AI Vision
+    let fileBase64 = null;
+    try {
+      if (file.type.startsWith('image/')) {
+        fileBase64 = await readFileAsBase64(file);
+      }
+    } catch (e) {
+      console.warn('Không đọc được file base64:', e);
+    }
+
+    // 3. Gọi Groq AI Vision phân tích NỘI DUNG THẬT
     const selectedC = criteria.find(c => c.id === selectedCriteria);
     try {
       const res = await fetch('/api/ocr', {
@@ -36,6 +55,7 @@ export default function UploadPage() {
           fileType: file.type || 'application/octet-stream',
           fileSize: (file.size / 1024 / 1024).toFixed(2),
           criteriaName: selectedC?.name || 'SV5T',
+          fileBase64: fileBase64,
         }),
       });
 
@@ -113,7 +133,7 @@ export default function UploadPage() {
               <input type="file" ref={fileRef} style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleFileSelect} />
               <div className="upload-zone-icon">📁</div>
               <h3>{isDragOver ? '📥 Thả file vào đây!' : 'Kéo thả file hoặc click để chọn'}</h3>
-              <p>Hỗ trợ JPG, PNG, PDF · Groq AI sẽ phân tích nội dung file</p>
+              <p>Hỗ trợ JPG, PNG (AI Vision đọc nội dung thật) · PDF (phân tích tên file)</p>
             </div>
           )}
 
@@ -122,7 +142,7 @@ export default function UploadPage() {
             <div className="card fade-in" style={{ textAlign: 'center', padding: '48px' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'spin 2s linear infinite' }}>⚙️</div>
               <h3 style={{ marginBottom: '8px' }}>Đang phân tích {fileName}...</h3>
-              <p style={{ color: 'var(--muted)', fontSize: '12px', marginBottom: '16px' }}>Groq AI (Llama 3.3 70B) đang OCR và bóc tách thông tin</p>
+              <p style={{ color: 'var(--muted)', fontSize: '12px', marginBottom: '16px' }}>Groq Vision (Llama 3.2 90B) đang đọc nội dung thật từ file</p>
             </div>
           )}
 
@@ -184,7 +204,7 @@ export default function UploadPage() {
 
                 {/* AI Assessment */}
                 <div style={{ background: `${validityColor}08`, border: `1px solid ${validityColor}30`, borderRadius: '10px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: validityColor, marginBottom: '8px' }}>🤖 Đánh giá AI (Groq Llama 3.3)</div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: validityColor, marginBottom: '8px' }}>🤖 Đánh giá AI (Groq Vision)</div>
                   <p style={{ fontSize: '12px', color: 'var(--light)', lineHeight: 1.6 }}>{ocrResult.note}</p>
                   {ocrResult.criteriaMatch && (
                     <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--muted)' }}>Tiêu chí phù hợp: <strong style={{ color: 'var(--accent)' }}>{ocrResult.criteriaMatch}</strong></div>
@@ -206,11 +226,11 @@ export default function UploadPage() {
             <div className="card-title">⚡ Pipeline AI</div>
             <div style={{ fontSize: '11px', color: 'var(--light)', lineHeight: 1.8 }}>
               {[
-                { step: '1', label: 'Chọn file thật từ máy', color: 'var(--accent)' },
-                { step: '2', label: 'Upload → Supabase Storage', badge: 'Supabase', color: '#3ecf8e' },
-                { step: '3', label: 'Groq AI phân tích file', badge: 'Groq', color: '#10b981' },
-                { step: '4', label: 'Bóc tách fields + scoring', badge: 'Llama 3.3', color: '#8b5cf6' },
-                { step: '5', label: 'Trả kết quả realtime', color: 'var(--green)' },
+                { step: '1', label: 'Chọn file ảnh/PDF', color: 'var(--accent)' },
+                { step: '2', label: 'Upload → Supabase', badge: 'Supabase', color: '#3ecf8e' },
+                { step: '3', label: 'AI Vision đọc nội dung', badge: 'Vision', color: '#10b981' },
+                { step: '4', label: 'Bóc tách fields thật', badge: 'Llama 3.2', color: '#8b5cf6' },
+                { step: '5', label: 'Scoring + trả kết quả', color: 'var(--green)' },
               ].map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: `${s.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: s.color, flexShrink: 0 }}>{s.step}</div>
