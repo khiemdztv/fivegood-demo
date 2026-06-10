@@ -1,20 +1,18 @@
 import Groq from 'groq-sdk';
 
-const SYSTEM_PROMPT = `Bạn là hệ thống AI phân tích Bảng điểm và Xác thực dữ liệu sinh viên.
+const SYSTEM_PROMPT = `Bạn là hệ thống AI phân tích Minh chứng, Bảng điểm và Giấy chứng nhận của FiveGood Journey.
 
-NHIỆM VỤ: Phân tích hình ảnh bảng điểm hoặc giấy chứng nhận.
-Yêu cầu phân tích:
-1. "extractedScore": Đọc ra điểm số cuối cùng (GPA hệ 4.0, hoặc Điểm rèn luyện hệ 100) tùy theo yêu cầu của sinh viên.
-2. "schoolMatch": So sánh tên trường trên giấy tờ với "Trường của sinh viên" được cấp. Dùng đối chiếu NGỮ NGHĨA (semantic match), ví dụ "ĐH Bách Khoa" khớp với "Trường Đại học Bách Khoa", "ĐH Ngân Hàng" khớp với "Đại học Ngân hàng TP.HCM".
-3. "isAuthentic": Đánh giá xem hình ảnh có vẻ là bảng điểm thật không (có dấu mộc, chữ ký, logo, form chuẩn...). Trả về true nếu hợp lệ, false nếu là ảnh rác/đáng ngờ.
-4. "note": Lời giải thích ngắn gọn về kết quả.
+NHIỆM VỤ: Phân tích hình ảnh minh chứng được upload (bảng điểm, giấy khen, chứng nhận rèn luyện, chứng nhận tình nguyện, chứng nhận thể thao).
 
-Trả về kết quả dưới định dạng JSON thuần túy (KHÔNG có markdown):
+Hãy trích xuất thông tin thật và trả về dưới dạng JSON thuần túy (KHÔNG dùng markdown code blocks, KHÔNG nói chuyện bên ngoài, CHỈ TRẢ VỀ JSON):
 {
-  "extractedScore": "3.8",
-  "schoolMatch": true,
-  "isAuthentic": true,
-  "note": "Phát hiện tên trường ĐH Ngân Hàng khớp với hồ sơ. Có dấu mộc đỏ hợp lệ."
+  "studentName": "Họ và tên sinh viên ghi trên giấy tờ (VD: 'Nguyễn Minh Anh')",
+  "schoolName": "Tên trường đại học/cơ sở đào tạo ghi trên giấy tờ (VD: 'Đại học Bách Khoa TP.HCM')",
+  "extractedScore": "Điểm số hoặc thành tích trích xuất tương ứng loại cần lấy (VD: GPA: '3.8', Điểm rèn luyện: '95', Thể thao: 'Đạt chuẩn thể lực' hoặc 'Huy chương Vàng', Giải thưởng: 'Giải Nhất NCKH' hoặc 'Giấy khen Đoàn trường', Tình nguyện: số ngày tình nguyện đọc được từ giấy xác nhận, vd: '5 ngày')",
+  "nameMatch": true/false (So sánh xem studentName trích xuất có khớp ngữ nghĩa với Tên sinh viên dự kiến hay không. Trả về true nếu khớp hoặc viết không dấu khớp, false nếu sai tên hoàn toàn),
+  "schoolMatch": true/false (So sánh xem schoolName trích xuất có khớp ngữ nghĩa với Trường dự kiến hay không. Trả về true nếu trùng khớp hoặc viết tắt phổ biến khớp, false nếu sai trường hoàn toàn),
+  "isAuthentic": true/false (Đánh giá tài liệu có dấu mộc đỏ, chữ ký, logo đơn vị ban hành, hoặc đúng định dạng của một minh chứng/giấy chứng nhận thật hay không. Trả về true nếu hợp lệ, false nếu là ảnh rác/đáng ngờ),
+  "note": "Lời giải thích ngắn gọn bằng tiếng Việt về kết quả phân tích (VD: 'Tìm thấy tên sinh viên và tên trường trùng khớp. Điểm GPA đọc được là 3.8. Có dấu mộc đỏ hợp lệ.')"
 }`;
 
 export async function POST(request) {
@@ -41,7 +39,7 @@ export async function POST(request) {
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: imageUrl } },
-          { type: 'text', text: `${SYSTEM_PROMPT}\n\nThông tin cần đối chiếu:\n- Tên sinh viên: ${expectedName}\n- Trường của sinh viên: ${expectedSchool}\n- Loại điểm cần lấy: ${scoreType}\n\nHãy đọc nội dung thật từ ảnh và trả về JSON.` },
+          { type: 'text', text: `${SYSTEM_PROMPT}\n\nThông tin cần đối chiếu:\n- Tên sinh viên dự kiến: ${expectedName}\n- Trường dự kiến: ${expectedSchool}\n- Loại thành tích cần lấy: ${scoreType}\n\nHãy đọc nội dung thật từ ảnh và trả về JSON.` },
         ],
       }],
       temperature: 0.1,
@@ -56,7 +54,10 @@ export async function POST(request) {
     }
     
     return Response.json({ 
+      studentName: "",
+      schoolName: "",
       extractedScore: "", 
+      nameMatch: false,
       schoolMatch: false, 
       isAuthentic: false, 
       note: 'AI đọc được nhưng không phân tích được định dạng. Vui lòng chụp lại rõ nét hơn.' 

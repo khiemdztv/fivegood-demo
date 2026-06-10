@@ -1,18 +1,61 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 
 export default function PassportPage() {
   const { user, login } = useAuth();
   const [isEditingStats, setIsEditingStats] = useState(false);
-  const [gpa, setGpa] = useState(user?.gpa || '');
-  const [trainingScore, setTrainingScore] = useState(user?.trainingScore || '');
+  const [gpa, setGpa] = useState('');
+  const [trainingScore, setTrainingScore] = useState('');
+  const [sports, setSports] = useState('');
+  const [awards, setAwards] = useState('');
+  const [volunteerDays, setVolunteerDays] = useState('');
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [timelineEvents, setTimelineEvents] = useState([]);
   
   // AI Scanning state
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [scanningType, setScanningType] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (user) {
+      setGpa(user.gpa || '');
+      setTrainingScore(user.trainingScore || '');
+      setSports(user.sports || '');
+      setAwards(user.awards || '');
+      setVolunteerDays(user.volunteerDays || '');
+      
+      if (user.timelineEvents && user.timelineEvents.length > 0) {
+        setTimelineEvents(user.timelineEvents);
+      } else {
+        setTimelineEvents([
+          { date: new Date().toLocaleDateString('vi-VN'), text: 'Tạo tài khoản thành công', highlight: true },
+          { date: 'Sắp tới', text: 'Tải lên minh chứng đầu tiên', highlight: false }
+        ]);
+      }
+    }
+  }, [user]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      showToast('🔗 Đã sao chép liên kết Passport!');
+    }
+  };
+
+  const handlePrintPdf = () => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  };
 
   const compressImage = (file, maxSize = 1200) => {
     return new Promise((resolve) => {
@@ -73,26 +116,27 @@ export default function PassportPage() {
       const data = await res.json();
       setScanResult({ type: scanningType, ...data });
       
-      if (data.isAuthentic && data.schoolMatch && data.extractedScore) {
+      if (data.isAuthentic && data.schoolMatch && data.nameMatch && data.extractedScore) {
         if (scanningType === 'GPA') setGpa(data.extractedScore);
-        else setTrainingScore(data.extractedScore);
+        else if (scanningType === 'Điểm rèn luyện') setTrainingScore(data.extractedScore);
+        else if (scanningType === 'Thể thao') setSports(data.extractedScore);
+        else if (scanningType === 'Giải thưởng') setAwards(data.extractedScore);
+        else if (scanningType === 'Tình nguyện') {
+          const matches = data.extractedScore.match(/\d+/);
+          if (matches) {
+            setVolunteerDays(matches[0]);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
-      setScanResult({ type: scanningType, isAuthentic: false, schoolMatch: false, note: 'Lỗi kết nối máy chủ.' });
+      setScanResult({ type: scanningType, isAuthentic: false, nameMatch: false, schoolMatch: false, note: 'Lỗi kết nối máy chủ.' });
     }
     
     setIsScanning(false);
     e.target.value = '';
   };
 
-  const handleSaveStats = () => {
-    const updatedUser = { ...user, gpa, trainingScore };
-    login(updatedUser);
-    setIsEditingStats(false);
-  };
-
-  if (!user) return null;
   return (
     <div className="page-container">
       <div className="section-header fade-in">
@@ -130,7 +174,7 @@ export default function PassportPage() {
           </div>
 
           {isEditingStats && (
-            <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px dashed var(--border)' }}>
+            <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px dashed var(--border)' }}>
               
               {/* Hidden File Input */}
               <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
@@ -139,35 +183,151 @@ export default function PassportPage() {
               {isScanning && (
                 <div style={{ padding: '8px', background: 'rgba(59,130,246,0.1)', color: 'var(--accent)', borderRadius: '4px', marginBottom: '12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div className="spinner" style={{ width: '12px', height: '12px' }}></div>
-                  AI đang quét bảng điểm của {user?.name}...
-                </div>
-              )}
-              {scanResult && !isScanning && (
-                <div style={{ padding: '8px', background: scanResult.isAuthentic && scanResult.schoolMatch ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: scanResult.isAuthentic && scanResult.schoolMatch ? 'var(--green)' : 'var(--red)', borderRadius: '4px', marginBottom: '12px', fontSize: '11px' }}>
-                  <strong>{scanResult.isAuthentic && scanResult.schoolMatch ? '✅ Xác thực thành công:' : '⚠️ Cảnh báo AI:'}</strong> {scanResult.note}
+                  AI đang quét minh chứng của {user?.name}...
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '150px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '11px', color: 'var(--light)' }}>GPA (Hệ 4.0)</label>
-                    <button onClick={() => handleScanClick('GPA')} className="btn" style={{ fontSize: '9px', padding: '2px 6px', background: 'var(--accent)', color: 'white' }}>📷 Quét AI</button>
+              {/* Scan Results Display */}
+              {scanResult && !isScanning && (
+                <div style={{
+                  background: 'rgba(20, 30, 50, 0.8)',
+                  border: '1px solid var(--border)',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--accent2)', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🔍 AI PHÂN TÍCH MINH CHỨNG ({scanResult.type})</span>
+                    <button onClick={() => setScanResult(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
                   </div>
-                  <input type="number" step="0.01" value={gpa} onChange={e => setGpa(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '14px' }} placeholder="VD: 3.6" />
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span><strong>Họ tên sinh viên:</strong> {scanResult.studentName || 'Không phát hiện'}</span>
+                      {scanResult.studentName && (
+                        <span style={{ color: scanResult.nameMatch ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
+                          {scanResult.nameMatch ? '✅ Khớp hồ sơ' : '❌ Sai sinh viên'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span><strong>Trường học:</strong> {scanResult.schoolName || 'Không phát hiện'}</span>
+                      {scanResult.schoolName && (
+                        <span style={{ color: scanResult.schoolMatch ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
+                          {scanResult.schoolMatch ? '✅ Khớp hồ sơ' : '❌ Sai trường'}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <strong>Giá trị đọc được:</strong> <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>{scanResult.extractedScore || 'Không xác định'}</span>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '4px', fontSize: '11px', color: 'var(--light)', fontStyle: 'italic' }}>
+                      {scanResult.note}
+                    </div>
+                  </div>
+
+                  {/* Enforce strict match requirements */}
+                  {(!scanResult.nameMatch || !scanResult.schoolMatch) ? (
+                    <div style={{ padding: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid var(--red)', borderRadius: '6px', color: 'var(--red)', fontSize: '11px', fontWeight: 600 }}>
+                      ⚠️ Không thể lưu: Tên sinh viên hoặc trường trên minh chứng không khớp với thông tin của bạn. Vui lòng kiểm tra lại tài liệu nộp!
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px', background: 'rgba(16,185,129,0.1)', border: '1px solid var(--green)', borderRadius: '6px', color: 'var(--green)', fontSize: '11px', fontWeight: 600 }}>
+                      ✅ Xác thực thành công: Bạn có thể cập nhật thông tin này vào Passport.
+                    </div>
+                  )}
+
+                  {/* If Volunteer, allow user to input/confirm the number of volunteer days */}
+                  {scanResult.type === 'Tình nguyện' && scanResult.nameMatch && scanResult.schoolMatch && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '10px',
+                      background: 'rgba(59,130,246,0.1)',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <label style={{ fontSize: '11px', fontWeight: 700 }}>Nhập số ngày tình nguyện ghi nhận từ minh chứng:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={volunteerDays}
+                        onChange={e => setVolunteerDays(e.target.value)}
+                        style={{
+                          width: '70px',
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid var(--border)',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Form inputs grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>📚 GPA (Hệ 4.0)</label>
+                    <button onClick={() => handleScanClick('GPA')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="number" step="0.01" value={gpa} onChange={e => setGpa(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: 3.65" />
                 </div>
                 
-                <div style={{ flex: 1, minWidth: '150px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '11px', color: 'var(--light)' }}>Điểm rèn luyện</label>
-                    <button onClick={() => handleScanClick('Điểm rèn luyện')} className="btn" style={{ fontSize: '9px', padding: '2px 6px', background: 'var(--accent)', color: 'white' }}>📷 Quét AI</button>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>🌟 Điểm rèn luyện</label>
+                    <button onClick={() => handleScanClick('Điểm rèn luyện')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét AI</button>
                   </div>
-                  <input type="number" value={trainingScore} onChange={e => setTrainingScore(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '14px' }} placeholder="VD: 90" />
+                  <input type="number" value={trainingScore} onChange={e => setTrainingScore(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: 90" />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>💪 Thể thao</label>
+                    <button onClick={() => handleScanClick('Thể thao')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="text" value={sports} onChange={e => setSports(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: Đạt chuẩn thể lực" />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>🏆 Giải thưởng</label>
+                    <button onClick={() => handleScanClick('Giải thưởng')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="text" value={awards} onChange={e => setAwards(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: Giải Nhất NCKH" />
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>❤️ Tình nguyện (Số ngày tích lũy)</label>
+                    <button onClick={() => handleScanClick('Tình nguyện')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét minh chứng</button>
+                  </div>
+                  <input type="number" value={volunteerDays} onChange={e => setVolunteerDays(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: 5" />
                 </div>
               </div>
 
-              <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                <button onClick={handleSaveStats} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 'bold' }}>💾 Lưu thay đổi</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+                <button onClick={() => { setIsEditingStats(false); setScanResult(null); }} className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--light)', border: '1px solid var(--border)' }}>Hủy</button>
+                <button
+                  onClick={handleSaveStats}
+                  className="btn btn-primary"
+                  disabled={scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)}
+                  style={{
+                    padding: '8px 20px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    opacity: (scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)) ? 0.5 : 1,
+                    cursor: (scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  💾 Lưu thay đổi
+                </button>
               </div>
             </div>
           )}
@@ -186,17 +346,17 @@ export default function PassportPage() {
             <div className="achievement-item">
               <div className="achievement-icon">❤️</div>
               <div className="achievement-label">Tình nguyện</div>
-              <div className="achievement-value">0 giờ</div>
+              <div className="achievement-value">{user.volunteerDays ? `${user.volunteerDays} ngày` : '0 ngày'}</div>
             </div>
             <div className="achievement-item">
               <div className="achievement-icon">💪</div>
               <div className="achievement-label">Thể thao</div>
-              <div className="achievement-value">Chưa có</div>
+              <div className="achievement-value">{user.sports || 'Chưa có'}</div>
             </div>
             <div className="achievement-item">
               <div className="achievement-icon">🏆</div>
               <div className="achievement-label">Giải thưởng</div>
-              <div className="achievement-value">0 giải</div>
+              <div className="achievement-value">{user.awards || '0 giải'}</div>
             </div>
             <div className="achievement-item">
               <div className="achievement-icon">🌟</div>
@@ -208,9 +368,9 @@ export default function PassportPage() {
 
         {/* QR & Actions */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px', position: 'relative' }}>
-          <button className="btn btn-primary">📱 QR Chia sẻ</button>
-          <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--light)' }}>📥 Tải PDF</button>
-          <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--light)' }}>🔗 Copy Link</button>
+          <button onClick={() => setShowQrModal(true)} className="btn btn-primary">📱 QR Chia sẻ</button>
+          <button onClick={handlePrintPdf} className="btn" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--light)' }}>📥 Tải PDF</button>
+          <button onClick={handleCopyLink} className="btn" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--light)' }}>🔗 Copy Link</button>
         </div>
       </div>
 
@@ -227,16 +387,19 @@ export default function PassportPage() {
 
       <div className="card fade-in">
         <div className="timeline">
-          <div className="timeline-item">
-            <div className="timeline-dot timeline-dot--highlight" style={{ borderColor: 'var(--green)', background: 'var(--green)' }}></div>
-            <div className="timeline-date">{new Date().toLocaleDateString('vi-VN')}</div>
-            <div className="timeline-event" style={{ color: 'var(--text)', fontWeight: 700 }}>Tạo tài khoản thành công</div>
-          </div>
-          <div className="timeline-item">
-            <div className="timeline-dot" style={{ borderColor: 'var(--muted)', background: 'var(--bg)' }}></div>
-            <div className="timeline-date">Sắp tới</div>
-            <div className="timeline-event" style={{ color: 'var(--muted)', fontWeight: 400 }}>Tải lên minh chứng đầu tiên</div>
-          </div>
+          {timelineEvents.map((evt, i) => (
+            <div key={i} className="timeline-item">
+              <div className={`timeline-dot ${evt.highlight ? 'timeline-dot--highlight' : ''}`} style={{
+                borderColor: evt.highlight ? 'var(--green)' : 'var(--muted)',
+                background: evt.highlight ? 'var(--green)' : 'var(--bg)'
+              }}></div>
+              <div className="timeline-date">{evt.date}</div>
+              <div className="timeline-event" style={{
+                color: evt.highlight ? 'var(--text)' : 'var(--muted)',
+                fontWeight: evt.highlight ? 700 : 400
+              }}>{evt.text}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -258,6 +421,80 @@ export default function PassportPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(20, 30, 50, 0.95)',
+          border: '1px solid var(--accent)',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          zIndex: 1100,
+          fontSize: '13px',
+          fontWeight: 'bold',
+          boxShadow: '0 4px 20px rgba(59,130,246,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          backdropFilter: 'blur(8px)',
+          animation: 'fadeSlideDown 0.3s ease'
+        }}>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* QR Sharing Modal */}
+      {showQrModal && (
+        <div className="modal-overlay" onClick={() => setShowQrModal(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+            background: 'var(--card)', border: '1px solid var(--border)', padding: '32px', borderRadius: '16px', textAlign: 'center', maxWidth: '360px', width: '90%'
+          }}>
+            <h3 style={{ marginBottom: '16px', color: 'var(--accent)' }}>QR Code Passport</h3>
+            <div style={{ background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px' }}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`} alt="QR Code" style={{ display: 'block', width: '200px', height: '200px' }} />
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--light)', marginBottom: '24px' }}>Quét mã QR để xem và chia sẻ Hồ sơ năng lực số của {user?.name}</p>
+            <button className="btn" onClick={() => setShowQrModal(false)} style={{ background: 'var(--border)', color: 'var(--text)', width: '100%' }}>Đóng</button>
+          </div>
+        </div>
+      )}
+
+      {/* Print PDF specific CSS */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .passport-card, .passport-card * {
+            visibility: visible !important;
+          }
+          .passport-card {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            max-width: 100% !important;
+            border: none !important;
+            background: #0f172a !important;
+            color: white !important;
+            box-shadow: none !important;
+            padding: 40px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .passport-card button, .passport-card .btn {
+            display: none !important;
+          }
+        }
+      `}} />
+
     </div>
   );
 }

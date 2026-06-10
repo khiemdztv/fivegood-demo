@@ -7,13 +7,21 @@
 
 | Mục | Nội dung |
 |---|---|
-| **Tên đội** | *(Điền tên đội)* |
+| **Tên đội** | **VTK** |
 | **Tên sản phẩm / dự án** | **FiveGood Journey** – AI đồng hành cùng hành trình Sinh viên 5 tốt |
 | **Đề tài lựa chọn** | Đề tài 5 – Phát triển giải pháp AI hỗ trợ đổi mới, nâng cao hiệu quả công tác Hội và phong trào sinh viên, tối ưu hóa quy trình quản lý, đánh giá, xét chọn danh hiệu "Sinh viên 5 tốt cấp Trung ương" |
-| **Trường** | *(Điền tên trường)* |
-| **Thành viên** | *(Điền danh sách thành viên – tối đa 5 người)* |
-| **Số điện thoại liên hệ** | *(Điền SĐT)* |
-| **Email liên hệ** | *(Điền email)* |
+| **Trường** | **Trường Đại học Ngân hàng TP.HCM (HUB)** |
+| **Thành viên** | 1. **Lâm Tuấn Vũ** (Leader)<br>2. **Đỗ Gia Khiêm** (Member)<br>3. **Nguyễn Vũ Thắng** (Member) |
+| **Số điện thoại liên hệ** | 0867900730 |
+| **Email liên hệ** | vtkteam2005@gmail.com |
+
+## PHÂN CÔNG CÔNG VIỆC
+
+| Thành viên | Vai trò | Công việc chính |
+|---|---|---|
+| **Lâm Tuấn Vũ** | **Team Leader / Full-stack Developer** | Quản lý tiến độ dự án, thiết kế kiến trúc hệ thống tổng thể. Phát triển Backend (API Routes) và luồng xử lý AI (tích hợp Groq Cloud Llama 3.3). |
+| **Đỗ Gia Khiêm** | **AI / Frontend Developer** | Xây dựng giao diện Web App (Next.js, React). Nghiên cứu và tối ưu hóa luồng AI bóc tách thông tin (OCR, Llama 4 Vision). Thiết kế luồng UX/UI. |
+| **Nguyễn Vũ Thắng** | **Database & QA / BA** | Thiết kế Cơ sở dữ liệu (Supabase), chịu trách nhiệm phân tích nghiệp vụ Hội Sinh viên. Xây dựng kịch bản kiểm thử (Test cases) và đánh giá chất lượng đầu ra AI. |
 
 ---
 
@@ -156,10 +164,12 @@ Thay vì xem hàng trăm hồ sơ theo kiểu "mở file – đọc – đoán �
 ### ⑤ Digital Passport – Hồ sơ năng lực số
 Sau khi sinh viên đạt danh hiệu, hệ thống tự động tạo **hồ sơ năng lực số** gồm:
 - Thông tin được công nhận và cấp xét.
-- Các thành tích nổi bật (GPA, giờ tình nguyện, chứng chỉ ngoại ngữ...).
-- Timeline hoạt động.
-- Bản tóm tắt năng lực do AI tổng hợp.
-- QR code hoặc link chia sẻ công khai.
+- Các thành tích nổi bật được xác thực bằng AI: **Tích hợp tính năng Quét & Xác thực điểm số và thành tích tự động (GPA, Điểm rèn luyện, Thể thao, Giải thưởng, Tình nguyện) bằng AI Vision** trực tiếp trên trang Passport.
+  - Sinh viên chụp hoặc upload ảnh bảng điểm/giấy chứng nhận, hệ thống sẽ tự động quét OCR bóc tách điểm số/thành tích.
+  - **Ràng buộc xác thực nghiêm ngặt:** Hệ thống bắt buộc phải so khớp trùng khớp cả **Họ tên sinh viên** và **Tên trường học** trên minh chứng với thông tin hồ sơ (sử dụng so khớp ngữ nghĩa của Llama 3.2 Vision) thì mới cho phép người dùng bấm "Lưu thay đổi" cập nhật lên hệ thống.
+  - **Tự xác nhận ngày tình nguyện:** Đối với minh chứng tình nguyện (đo lường bằng ngày tình nguyện), sau khi upload ảnh và AI xác minh danh tính thành công, sinh viên được tự xác nhận/nhập số ngày tình nguyện ghi nhận từ tài liệu.
+- Timeline hoạt động cập nhật thời gian thực (Realtime): Tự động ghi nhận và hiển thị mốc sự kiện ngay khi sinh viên lưu thành tích/minh chứng mới thành công.
+- Tương tác thực tế đầy đủ: Tích hợp nút **Copy Link** chia sẻ nhanh, **QR code** động (sinh tự động qua API hướng tới link passport) và **Tải PDF** chuẩn hóa bản in của Passport (sử dụng CSS print-mode chuyên dụng).
 
 Đây là ý tưởng giúp sản phẩm **vượt khỏi khuôn khổ phần mềm nội bộ**, tạo giá trị dài hạn cho sinh viên và mở ra tiềm năng thị trường sau cuộc thi.
 
@@ -274,7 +284,7 @@ Upload file ──▶ Kiểm tra định dạng ──▶ Gửi OCR (SmartReader
 |---|---|---|
 | Frontend | **Next.js 15** (App Router) + React 19 + Vanilla CSS | Mobile-first, SSR/SSG, API Routes tích hợp |
 | API Layer | **Next.js API Routes** (Server-side) | Không cần backend riêng, Groq SDK chạy server-side |
-| AI – Vision OCR | **Groq Cloud** – Llama 4 Scout 17B (Vision) | Đọc nội dung thật từ ảnh minh chứng |
+| AI – Vision OCR | **Groq Cloud** – Llama 3.2 11B Vision / Llama 4 Scout | Đọc minh chứng + Xác thực điểm số tự động (GPA & Điểm rèn luyện) |
 | AI – Text/Chat | **Groq Cloud** – Llama 3.3 70B Versatile | AI Mentor chatbot + phân tích PDF text |
 | PDF Processing | **unpdf** (client-side) | Trích xuất text từ PDF, không cần worker |
 | File Storage | **Supabase Storage** | Lưu ảnh/PDF minh chứng, miễn phí tier |
@@ -282,59 +292,33 @@ Upload file ──▶ Kiểm tra định dạng ──▶ Gửi OCR (SmartReader
 | Deploy | **Vercel** | Auto-deploy từ GitHub, HTTPS, CDN global |
 | AI Vòng 2 | **VNPT API** (SmartReader, eKYC, SmartBot, SmartVoice...) | Tận dụng tối đa hệ sinh thái BTC |
 
-## 4.5. Wireframe minh họa
+## 4.5. Giao diện thực tế (Screenshots)
 
-### Dashboard sinh viên
-```
- ╔══════════════════════════════════════════════════════════╗
- ║  FiveGood Journey          Xin chào, Nguyễn Văn A  👤  ║
- ╠══════════════════════════════════════════════════════════╣
- ║  Tiến độ tổng thể: ████████████████░░░░░░░░  72%       ║
- ║                                                         ║
- ║  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌────────┐ ┌────┐ ║
- ║  │Đạo đức  │ │Học tập  │ │Thể lực  │ │T.Nguyện│ │H.Nhập║
- ║  │  ✅ 100%│ │ 🔶 80% │ │  ✅ 100%│ │ ❌ 40% │ │🔶 60%║
- ║  └─────────┘ └─────────┘ └─────────┘ └────────┘ └────┘ ║
- ╠══════════════════════════════════════════════════════════╣
- ║  📋 Việc cần làm tiếp theo                              ║
- ║  • Bổ sung minh chứng tình nguyện (ít nhất 1 giấy CN)  ║
- ║  • Cập nhật chứng chỉ tiếng Anh cho tiêu chí Hội nhập  ║
- ╠══════════════════════════════════════════════════════════╣
- ║  🤖 AI Mentor                                           ║
- ║  "Bạn còn thiếu 1 minh chứng cho tiêu chí Hội nhập.    ║
- ║   Gợi ý: upload chứng chỉ IELTS hoặc giấy CN hoạt     ║
- ║   động giao lưu quốc tế."                               ║
- ║  ┌──────────────────────────────────────────────┐ [Gửi] ║
- ║  │ Nhập câu hỏi...                             │       ║
- ║  └──────────────────────────────────────────────┘       ║
- ╠══════════════════════════════════════════════════════════╣
- ║  📎 Minh chứng gần đây                                  ║
- ║  │ Bảng điểm HK1     │ VALID   │ ✅ OCR OK             ║
- ║  │ Giấy CN CLB Tình N.│ SUSPECT │ ⚠️ Scan mờ           ║
- ╚══════════════════════════════════════════════════════════╝
-```
+Dưới đây là các hình ảnh thực tế từ ứng dụng web **FiveGood Journey** do đội thi phát triển.
 
-### Dashboard cán bộ Hội (Reviewer)
+### Giao diện Trang chủ (Landing Page)
+![Giao diện Trang chủ](screenshots/home.png)
+
+### Giao diện Lựa chọn vai trò & Đăng nhập
+![Giao diện Lựa chọn vai trò](screenshots/dashboard.png)
+
+### Giao diện Upload & Phân tích minh chứng AI OCR
+![Giao diện Upload minh chứng](screenshots/user_img1.png)
+
+## 4.6. Luồng nghiệp vụ toàn trình (End-to-End Business Flow)
+
+Quy trình trải nghiệm người dùng từ khi bắt đầu đến khi kết thúc được diễn ra hoàn toàn trên hệ thống:
+
 ```
- ╔══════════════════════════════════════════════════════════════╗
- ║  FiveGood Journey Admin        Kỳ xét: SV5T 2025-2026     ║
- ╠══════════════════════════════════════════════════════════════╣
- ║  Bộ lọc: [Trạng thái ▼] [Khoa ▼] [AI Risk ▼] [Đợt xét ▼] ║
- ╠══════════════════════════════════════════════════════════════╣
- ║  MSSV  │ Họ tên      │ Khoa │ Trạng thái │ AI Risk│Hành động║
- ║  20001 │ Nguyễn A    │ CNTT │ Submitted  │ 🟢 Low │ [Xem]  ║
- ║  20002 │ Trần B      │ QTKD │ Submitted  │ 🔴 High│ [Xem]  ║
- ║  20003 │ Lê C        │ Luật │ Need Update│ 🟡 Med │ [Xem]  ║
- ╠══════════════════════════════════════════════════════════════╣
- ║  📋 Chi tiết hồ sơ: Trần B (20002) - AI Risk: HIGH        ║
- ║  • MC 1: Bảng điểm → VALID (OCR: GPA 3.2, khớp tên)      ║
- ║  • MC 2: Giấy CN tình nguyện → SUSPECT (scan mờ, thiếu    ║
- ║    đơn vị cấp)                                              ║
- ║  • MC 3: Ảnh hoạt động → SUSPECT (không phát hiện face)    ║
- ║  🤖 AI Summary: "Hồ sơ thiếu MC tiêu chí Thể lực.         ║
- ║    2 MC nghi vấn cần kiểm tra thủ công."                    ║
- ║  [✅ Approve] [❌ Reject] [📝 Request Update]               ║
- ╚══════════════════════════════════════════════════════════════╝
+[BƯỚC 1] Sinh viên tương tác AI Mentor ──▶ [Hỏi đáp tiêu chí, lập lộ trình cá nhân hóa]
+                                           │
+[BƯỚC 2] Nộp minh chứng & AI quét OCR ──▶ [Bóc tách văn bản, kiểm tra hợp lệ sơ bộ]
+                                           │
+[BƯỚC 3] Phân loại Risk (AI Scoring) ──▶ [Đánh dấu VALID / SUSPECT tự động]
+                                           │
+[BƯỚC 4] Cán bộ Hội xét duyệt đa cấp ──▶ [AI Copilot tóm tắt hồ sơ, yêu cầu cập nhật]
+                                           │
+[BƯỚC 5] Cấp chứng nhận & Hồ sơ số   ──▶ [Tạo Digital Passport, kết nối doanh nghiệp]
 ```
 
 ---
@@ -562,7 +546,7 @@ Sản phẩm tạo giá trị ở **cả hai phía**:
 |---|---|
 | **Demo URL** | **https://fivegood-demo.vercel.app** |
 | **GitHub Repo** | https://github.com/khiemdztv/fivegood-demo |
-| **Tính năng hoạt động** | Login phân quyền, Dashboard SV5T, AI Mentor (Groq Llama 3.3), Upload OCR ảnh (Groq Vision Llama 4), Upload OCR PDF (unpdf + Groq), Digital Passport, Reviewer Dashboard, Analytics & Thống kê |
+| **Tính năng hoạt động** | Login phân quyền, Dashboard SV5T, AI Mentor (Groq Llama 3.3), Upload OCR ảnh (Groq Vision Llama 4), Upload OCR PDF (unpdf + Groq), Digital Passport (Tích hợp quét xác thực điểm GPA & ĐRL bằng AI Vision Llama 3.2), Reviewer Dashboard, Analytics & Thống kê |
 | **AI thật** | Groq Cloud API – không mock data, phân tích nội dung thật từ file upload |
 | **Tech Stack** | Next.js 15, React 19, Groq AI, Supabase, unpdf, Vercel |
 
@@ -583,6 +567,5 @@ Nếu được vào vòng 2, đội thi cam kết:
 
 ---
 
-*Tài liệu được biên soạn bởi đội [Tên đội] – Vietnamese Student HackAIthon 2026*
-*Ngày nộp: 07/06/2026*
+*Tài liệu được biên soạn bởi đội VTK - Vietnamese Student HackAIthon 2026*
 
