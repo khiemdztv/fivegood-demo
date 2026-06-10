@@ -1,12 +1,22 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { criteria } from '@/data/mockData';
 import { uploadEvidence, saveEvidence, updateCriteriaProgress, findUserByMssv, createUser } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
+const SUBCATEGORIES_MAP = {
+  c1: [{ value: 'Điểm rèn luyện', label: '🌟 Điểm rèn luyện' }],
+  c2: [{ value: 'GPA', label: '📚 Điểm GPA' }, { value: 'Giải thưởng', label: '🏆 Giải thưởng học thuật/NCKH' }],
+  c3: [{ value: 'Thể thao', label: '💪 Thể thao/Thể chất' }],
+  c4: [{ value: 'Tình nguyện', label: '❤️ Hoạt động tình nguyện' }],
+  c5: [{ value: 'Ngoại ngữ', label: '🌍 Chứng chỉ ngoại ngữ' }, { value: 'Giải thưởng', label: '🏆 Giải thưởng/Chứng nhận khác' }]
+};
+
 export default function UploadPage() {
   const [step, setStep] = useState('idle');
   const [selectedCriteria, setSelectedCriteria] = useState('c4');
+  const [subCategory, setSubCategory] = useState('Tình nguyện');
+  const [volunteerDaysInput, setVolunteerDaysInput] = useState('1');
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
   const [uploadInfo, setUploadInfo] = useState(null);
@@ -17,6 +27,16 @@ export default function UploadPage() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const { user, login } = useAuth();
+
+  const currentOptions = SUBCATEGORIES_MAP[selectedCriteria] || [];
+
+  useEffect(() => {
+    if (currentOptions.length > 0) {
+      setSubCategory(currentOptions[0].value);
+    } else {
+      setSubCategory('');
+    }
+  }, [selectedCriteria]);
 
   // Nén ảnh về max 1200px để Groq Vision xử lý được
   const compressImage = (file, maxSize = 1200) => {
@@ -92,19 +112,17 @@ export default function UploadPage() {
       console.warn('Không xử lý được file:', e);
     }
 
-    // 3. Gọi Groq AI phân tích NỘI DUNG THẬT
-    const selectedC = criteria.find(c => c.id === selectedCriteria);
+    // 3. Gọi Groq AI phân tích & xác thực thông tin
     try {
-      const res = await fetch('/api/ocr', {
+      const res = await fetch('/api/verify-score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type || 'application/octet-stream',
-          fileSize: (file.size / 1024 / 1024).toFixed(2),
-          criteriaName: selectedC?.name || 'SV5T',
           fileBase64: fileBase64,
           pdfText: pdfText,
+          expectedSchool: user?.school || '',
+          expectedName: user?.name || '',
+          scoreType: subCategory
         }),
       });
 
@@ -114,7 +132,31 @@ export default function UploadPage() {
       }
 
       const data = await res.json();
-      setOcrResult(data);
+      
+      const mappedResult = {
+        ...data,
+        aiValidity: (data.isAuthentic && data.nameMatch && data.schoolMatch) ? 'VALID' : 'INVALID',
+        aiScore: (data.isAuthentic && data.nameMatch && data.schoolMatch) ? 0.95 : 0.25,
+        extractedText: data.note,
+        fields: [
+          { label: 'Họ tên sinh viên', value: data.studentName || 'Không phát hiện' },
+          { label: 'Trường đại học', value: data.schoolName || 'Không phát hiện' },
+          { label: `Thành tích trích xuất (${subCategory})`, value: data.extractedScore || 'Không xác định' }
+        ],
+        criteriaMatch: subCategory,
+        note: data.note
+      };
+
+      if (subCategory === 'Tình nguyện' && data.extractedScore) {
+        const matches = data.extractedScore.match(/\d+/);
+        if (matches) {
+          setVolunteerDaysInput(matches[0]);
+        } else {
+          setVolunteerDaysInput('1');
+        }
+      }
+
+      setOcrResult(mappedResult);
       setStep('result');
     } catch (err) {
       setError(err.message);
@@ -181,6 +223,52 @@ export default function UploadPage() {
         : ocrResult.aiValidity === 'SUSPECT' ? 60 : 30;
       await updateCriteriaProgress(dbId, selectedCriteria, newProgress);
 
+      // 3. Cập nhật Passport stats locally & timeline
+      if (user) {
+        const updatedUser = { ...user, dbId };
+        let updatedText = '';
+
+        if (subCategory === 'GPA') {
+          updatedUser.gpa = ocrResult.extractedScore || '';
+          updatedText = `Cập nhật GPA: ${updatedUser.gpa} / 4.0 qua minh chứng AI`;
+        } else if (subCategory === 'Điểm rèn luyện') {
+          updatedUser.trainingScore = ocrResult.extractedScore || '';
+          updatedText = `Cập nhật Điểm rèn luyện: ${updatedUser.trainingScore} / 100 qua minh chứng AI`;
+        } else if (subCategory === 'Ngoại ngữ') {
+          updatedUser.foreignLanguage = ocrResult.extractedScore || '';
+          updatedText = `Cập nhật Ngoại ngữ: ${updatedUser.foreignLanguage} qua minh chứng AI`;
+        } else if (subCategory === 'Thể thao') {
+          updatedUser.sports = ocrResult.extractedScore || '';
+          updatedText = `Cập nhật Thể thao: ${updatedUser.sports} qua minh chứng AI`;
+        } else if (subCategory === 'Giải thưởng') {
+          updatedUser.awards = ocrResult.extractedScore || '';
+          updatedText = `Cập nhật Giải thưởng: ${updatedUser.awards} qua minh chứng AI`;
+        } else if (subCategory === 'Tình nguyện') {
+          const daysAdded = Number(volunteerDaysInput || 0);
+          updatedUser.volunteerDays = String(Number(user.volunteerDays || 0) + daysAdded);
+          updatedText = `Cập nhật Tình nguyện: Tích lũy thêm ${daysAdded} ngày (Tổng: ${updatedUser.volunteerDays} ngày) qua minh chứng AI`;
+        }
+
+        if (updatedText) {
+          const currentTimeline = user.timelineEvents && user.timelineEvents.length > 0
+            ? [...user.timelineEvents]
+            : [
+                { date: new Date().toLocaleDateString('vi-VN'), text: 'Tạo tài khoản thành công', highlight: true },
+                { date: 'Sắp tới', text: 'Tải lên minh chứng đầu tiên', highlight: false }
+              ];
+          
+          currentTimeline.unshift({
+            date: new Date().toLocaleDateString('vi-VN'),
+            text: updatedText,
+            highlight: true
+          });
+
+          updatedUser.timelineEvents = currentTimeline;
+        }
+
+        login(updatedUser);
+      }
+
       setConfirmed(true);
     } catch (err) {
       console.error('Save error:', err);
@@ -217,6 +305,38 @@ export default function UploadPage() {
                   {c.icon} {c.name}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Sub-category Selector */}
+          <div className="card fade-in" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <div className="card-title" style={{ fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '4px' }}>
+              <span>🎯 Mục cập nhật Passport:</span>
+              <select
+                value={subCategory}
+                onChange={e => setSubCategory(e.target.value)}
+                style={{
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid var(--border)',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
+                }}
+              >
+                {currentOptions.map(opt => (
+                  <option key={opt.value} value={opt.value} style={{ background: 'var(--bg)', color: 'white' }}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+              Minh chứng sau khi được AI xác thực sẽ tự động cập nhật mục tương ứng trong Digital Passport của bạn.
             </div>
           </div>
 
@@ -310,20 +430,70 @@ export default function UploadPage() {
                   )}
                 </div>
 
+                {/* Enforce strict match requirements */}
+                {ocrResult && (!ocrResult.nameMatch || !ocrResult.schoolMatch) && (
+                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid var(--red)', borderRadius: '8px', color: 'var(--red)', fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
+                    ⚠️ Không thể lưu: Tên sinh viên hoặc trường trên minh chứng không khớp với thông tin của bạn. Vui lòng kiểm tra lại tài liệu nộp!
+                  </div>
+                )}
+
+                {/* If Volunteer, allow user to input/confirm the number of volunteer days */}
+                {ocrResult && subCategory === 'Tình nguyện' && ocrResult.nameMatch && ocrResult.schoolMatch && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: 'rgba(59,130,246,0.1)',
+                    border: '1px solid rgba(59,130,246,0.2)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--light)' }}>Nhập số ngày tình nguyện ghi nhận từ minh chứng:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={volunteerDaysInput}
+                      onChange={e => setVolunteerDaysInput(e.target.value)}
+                      style={{
+                        width: '70px',
+                        background: 'rgba(0,0,0,0.4)',
+                        border: '1px solid var(--border)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        textAlign: 'center',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Confirm buttons */}
                 {confirmed ? (
                   <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '16px', textAlign: 'center', marginTop: '16px' }}>
                     <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎉</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--green)', marginBottom: '4px' }}>Đã lưu minh chứng thành công!</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Dữ liệu đã được ghi vào Supabase Database</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--green)', marginBottom: '4px' }}>Đã lưu minh chứng & cập nhật Passport!</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Dữ liệu đã được đồng bộ hóa thành công</div>
                     <div style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'center' }}>
                       <button className="btn btn-primary" onClick={reset} style={{ fontSize: '12px' }}>📄 Upload thêm minh chứng</button>
-                      <button className="btn btn-update" onClick={() => window.location.href = '/dashboard'} style={{ fontSize: '12px' }}>📊 Xem Dashboard</button>
+                      <button className="btn btn-update" onClick={() => window.location.href = '/passport'} style={{ fontSize: '12px' }}>🎫 Xem Passport</button>
                     </div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                    <button className="btn btn-approve" style={{ flex: 1, justifyContent: 'center', opacity: saving ? 0.6 : 1 }} onClick={handleConfirm} disabled={saving}>
+                    <button
+                      className="btn btn-approve"
+                      style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        opacity: (saving || !ocrResult.nameMatch || !ocrResult.schoolMatch) ? 0.5 : 1,
+                        cursor: (!ocrResult.nameMatch || !ocrResult.schoolMatch) ? 'not-allowed' : 'pointer'
+                      }}
+                      onClick={handleConfirm}
+                      disabled={saving || !ocrResult.nameMatch || !ocrResult.schoolMatch}
+                    >
                       {saving ? '⏳ Đang lưu...' : '✅ Xác nhận dùng minh chứng này'}
                     </button>
                     <button className="btn btn-update" onClick={reset}>🔄 Upload file khác</button>

@@ -10,6 +10,7 @@ export default function PassportPage() {
   const [sports, setSports] = useState('');
   const [awards, setAwards] = useState('');
   const [volunteerDays, setVolunteerDays] = useState('');
+  const [foreignLanguage, setForeignLanguage] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [timelineEvents, setTimelineEvents] = useState([]);
@@ -27,6 +28,7 @@ export default function PassportPage() {
       setSports(user.sports || '');
       setAwards(user.awards || '');
       setVolunteerDays(user.volunteerDays || '');
+      setForeignLanguage(user.foreignLanguage || '');
       
       if (user.timelineEvents && user.timelineEvents.length > 0) {
         setTimelineEvents(user.timelineEvents);
@@ -88,6 +90,28 @@ export default function PassportPage() {
     fileInputRef.current?.click();
   };
 
+  const extractPdfText = async (file) => {
+    try {
+      const { extractText, getDocumentProxy } = await import('unpdf');
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
+      const { text } = await extractText(pdf, { mergePages: false });
+
+      let fullText = '';
+      const pages = text.slice(0, 3); // Tối đa 3 trang đầu
+      pages.forEach((pageText, i) => {
+        if (pageText.trim()) {
+          fullText += `[Trang ${i + 1}]\n${pageText.trim()}\n\n`;
+        }
+      });
+
+      return fullText.trim() || null;
+    } catch (err) {
+      console.error('PDF text extraction error:', err);
+      return null;
+    }
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -95,10 +119,23 @@ export default function PassportPage() {
     setIsScanning(true);
     setScanResult(null);
 
-    const base64 = await compressImage(file);
-    if (!base64) {
-      setIsScanning(false);
-      return;
+    let base64 = null;
+    let pdfText = null;
+
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      pdfText = await extractPdfText(file);
+      if (!pdfText) {
+        setIsScanning(false);
+        showToast('❌ Không thể trích xuất văn bản từ PDF này.');
+        return;
+      }
+    } else {
+      base64 = await compressImage(file);
+      if (!base64) {
+        setIsScanning(false);
+        showToast('❌ Không thể xử lý tệp ảnh.');
+        return;
+      }
     }
 
     try {
@@ -107,6 +144,7 @@ export default function PassportPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileBase64: base64,
+          pdfText: pdfText,
           expectedSchool: user?.school || '',
           expectedName: user?.name || '',
           scoreType: scanningType
@@ -121,6 +159,7 @@ export default function PassportPage() {
         else if (scanningType === 'Điểm rèn luyện') setTrainingScore(data.extractedScore);
         else if (scanningType === 'Thể thao') setSports(data.extractedScore);
         else if (scanningType === 'Giải thưởng') setAwards(data.extractedScore);
+        else if (scanningType === 'Ngoại ngữ') setForeignLanguage(data.extractedScore);
         else if (scanningType === 'Tình nguyện') {
           const matches = data.extractedScore.match(/\d+/);
           if (matches) {
@@ -136,6 +175,91 @@ export default function PassportPage() {
     setIsScanning(false);
     e.target.value = '';
   };
+
+  const handleSaveStats = () => {
+    const updatedUser = {
+      ...user,
+      gpa,
+      trainingScore,
+      sports,
+      awards,
+      volunteerDays,
+      foreignLanguage
+    };
+
+    const newTimelineEvents = [...timelineEvents];
+    let changed = false;
+
+    if (gpa !== user.gpa) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật GPA: ${gpa || 'Chưa có'} / 4.0`,
+        highlight: true
+      });
+      changed = true;
+    }
+    if (trainingScore !== user.trainingScore) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật Điểm rèn luyện: ${trainingScore || 'Chưa có'} / 100`,
+        highlight: true
+      });
+      changed = true;
+    }
+    if (sports !== user.sports) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật Thể thao: ${sports || 'Chưa có'}`,
+        highlight: true
+      });
+      changed = true;
+    }
+    if (awards !== user.awards) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật Giải thưởng: ${awards || '0 giải'}`,
+        highlight: true
+      });
+      changed = true;
+    }
+    if (volunteerDays !== user.volunteerDays) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật Tình nguyện: ${volunteerDays || '0'} ngày`,
+        highlight: true
+      });
+      changed = true;
+    }
+    if (foreignLanguage !== user.foreignLanguage) {
+      newTimelineEvents.unshift({
+        date: new Date().toLocaleDateString('vi-VN'),
+        text: `Cập nhật Ngoại ngữ: ${foreignLanguage || 'Chưa có'}`,
+        highlight: true
+      });
+      changed = true;
+    }
+
+    if (changed) {
+      updatedUser.timelineEvents = newTimelineEvents;
+      setTimelineEvents(newTimelineEvents);
+    }
+
+    login(updatedUser);
+    setIsEditingStats(false);
+    setScanResult(null);
+    showToast('💾 Đã cập nhật thành công!');
+  };
+
+  if (!user) {
+    return (
+      <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', color: 'var(--muted)' }}>
+          <div className="spinner" style={{ width: '32px', height: '32px', margin: '0 auto 12px' }}></div>
+          <div>Đang tải thông tin Passport...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -177,7 +301,7 @@ export default function PassportPage() {
             <div className="fade-in" style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px dashed var(--border)' }}>
               
               {/* Hidden File Input */}
-              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+              <input type="file" accept="image/*,.pdf" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
 
               {/* Status Message */}
               {isScanning && (
@@ -303,6 +427,14 @@ export default function PassportPage() {
                   <input type="text" value={awards} onChange={e => setAwards(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: Giải Nhất NCKH" />
                 </div>
 
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>🌍 Ngoại ngữ</label>
+                    <button onClick={() => handleScanClick('Ngoại ngữ')} className="btn" style={{ fontSize: '9px', padding: '2px 8px', background: 'var(--accent)', color: 'white', borderRadius: '4px' }}>📷 Quét AI</button>
+                  </div>
+                  <input type="text" value={foreignLanguage} onChange={e => setForeignLanguage(e.target.value)} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', padding: '8px', borderRadius: '4px', width: '100%', fontSize: '13px' }} placeholder="VD: IELTS 6.5" />
+                </div>
+
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
                     <label style={{ fontSize: '11px', color: 'var(--light)', fontWeight: 600 }}>❤️ Tình nguyện (Số ngày tích lũy)</label>
@@ -341,7 +473,7 @@ export default function PassportPage() {
             <div className="achievement-item">
               <div className="achievement-icon">🌍</div>
               <div className="achievement-label">Ngoại ngữ</div>
-              <div className="achievement-value">Chưa cập nhật</div>
+              <div className="achievement-value" style={{ color: user.foreignLanguage ? 'var(--text)' : 'var(--muted)' }}>{user.foreignLanguage || 'Chưa cập nhật'}</div>
             </div>
             <div className="achievement-item">
               <div className="achievement-icon">❤️</div>
