@@ -135,12 +135,12 @@ export default function UploadPage() {
       
       const mappedResult = {
         ...data,
-        aiValidity: (data.isAuthentic && data.nameMatch && data.schoolMatch) ? 'VALID' : 'INVALID',
-        aiScore: (data.isAuthentic && data.nameMatch && data.schoolMatch) ? 0.95 : 0.25,
+        aiValidity: (data.isAuthentic && data.nameMatch && (data.schoolMatch || subCategory === 'Giải thưởng')) ? 'VALID' : 'INVALID',
+        aiScore: (data.isAuthentic && data.nameMatch && (data.schoolMatch || subCategory === 'Giải thưởng')) ? 0.95 : 0.25,
         extractedText: data.note,
         fields: [
-          { label: 'Họ tên sinh viên', value: data.studentName || 'Không phát hiện' },
-          { label: 'Trường đại học', value: data.schoolName || 'Không phát hiện' },
+          { label: 'Họ tên sinh viên', value: `${data.studentName || 'Không phát hiện'}${data.studentName ? (data.nameMatch ? ' (✅ Khớp hồ sơ)' : ' (❌ Sai sinh viên)') : ''}` },
+          { label: 'Trường đại học', value: `${data.schoolName || 'Không phát hiện'}${data.schoolName ? (data.schoolMatch ? ' (✅ Khớp hồ sơ)' : (subCategory === 'Giải thưởng' ? ' (✅ Hợp lệ - Giải ngoại trường)' : ' (❌ Sai trường)')) : ''}` },
           { label: `Thành tích trích xuất (${subCategory})`, value: data.extractedScore || 'Không xác định' }
         ],
         criteriaMatch: subCategory,
@@ -431,7 +431,7 @@ export default function UploadPage() {
                 </div>
 
                 {/* Enforce strict match requirements */}
-                {ocrResult && (!ocrResult.nameMatch || !ocrResult.schoolMatch) && (
+                {ocrResult && (!ocrResult.nameMatch || (!ocrResult.schoolMatch && subCategory !== 'Giải thưởng')) && (
                   <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid var(--red)', borderRadius: '8px', color: 'var(--red)', fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
                     ⚠️ Không thể lưu: Tên sinh viên hoặc trường trên minh chứng không khớp với thông tin của bạn. Vui lòng kiểm tra lại tài liệu nộp!
                   </div>
@@ -488,11 +488,11 @@ export default function UploadPage() {
                       style={{
                         flex: 1,
                         justifyContent: 'center',
-                        opacity: (saving || !ocrResult.nameMatch || !ocrResult.schoolMatch) ? 0.5 : 1,
-                        cursor: (!ocrResult.nameMatch || !ocrResult.schoolMatch) ? 'not-allowed' : 'pointer'
+                        opacity: (saving || !ocrResult.nameMatch || (!ocrResult.schoolMatch && subCategory !== 'Giải thưởng')) ? 0.5 : 1,
+                        cursor: (!ocrResult.nameMatch || (!ocrResult.schoolMatch && subCategory !== 'Giải thưởng')) ? 'not-allowed' : 'pointer'
                       }}
                       onClick={handleConfirm}
-                      disabled={saving || !ocrResult.nameMatch || !ocrResult.schoolMatch}
+                      disabled={saving || !ocrResult.nameMatch || (!ocrResult.schoolMatch && subCategory !== 'Giải thưởng')}
                     >
                       {saving ? '⏳ Đang lưu...' : '✅ Xác nhận dùng minh chứng này'}
                     </button>

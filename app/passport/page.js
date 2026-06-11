@@ -154,7 +154,7 @@ export default function PassportPage() {
       const data = await res.json();
       setScanResult({ type: scanningType, ...data });
       
-      if (data.isAuthentic && data.schoolMatch && data.nameMatch && data.extractedScore) {
+      if (data.isAuthentic && (data.schoolMatch || scanningType === 'Giải thưởng') && data.nameMatch && data.extractedScore) {
         if (scanningType === 'GPA') setGpa(data.extractedScore);
         else if (scanningType === 'Điểm rèn luyện') setTrainingScore(data.extractedScore);
         else if (scanningType === 'Thể thao') setSports(data.extractedScore);
@@ -337,8 +337,8 @@ export default function PassportPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span><strong>Trường học:</strong> {scanResult.schoolName || 'Không phát hiện'}</span>
                       {scanResult.schoolName && (
-                        <span style={{ color: scanResult.schoolMatch ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
-                          {scanResult.schoolMatch ? '✅ Khớp hồ sơ' : '❌ Sai trường'}
+                        <span style={{ color: (scanResult.schoolMatch || scanResult.type === 'Giải thưởng') ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
+                          {scanResult.schoolMatch ? '✅ Khớp hồ sơ' : (scanResult.type === 'Giải thưởng' ? '✅ Hợp lệ (Giải ngoại trường)' : '❌ Sai trường')}
                         </span>
                       )}
                     </div>
@@ -351,7 +351,7 @@ export default function PassportPage() {
                   </div>
 
                   {/* Enforce strict match requirements */}
-                  {(!scanResult.nameMatch || !scanResult.schoolMatch) ? (
+                  {(!scanResult.nameMatch || (!scanResult.schoolMatch && scanResult.type !== 'Giải thưởng')) ? (
                     <div style={{ padding: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid var(--red)', borderRadius: '6px', color: 'var(--red)', fontSize: '11px', fontWeight: 600 }}>
                       ⚠️ Không thể lưu: Tên sinh viên hoặc trường trên minh chứng không khớp với thông tin của bạn. Vui lòng kiểm tra lại tài liệu nộp!
                     </div>
@@ -449,13 +449,13 @@ export default function PassportPage() {
                 <button
                   onClick={handleSaveStats}
                   className="btn btn-primary"
-                  disabled={scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)}
+                  disabled={scanResult && (!scanResult.nameMatch || (!scanResult.schoolMatch && scanResult.type !== 'Giải thưởng'))}
                   style={{
                     padding: '8px 20px',
                     fontSize: '12px',
                     fontWeight: 'bold',
-                    opacity: (scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)) ? 0.5 : 1,
-                    cursor: (scanResult && (!scanResult.nameMatch || !scanResult.schoolMatch)) ? 'not-allowed' : 'pointer'
+                    opacity: (scanResult && (!scanResult.nameMatch || (!scanResult.schoolMatch && scanResult.type !== 'Giải thưởng'))) ? 0.5 : 1,
+                    cursor: (scanResult && (!scanResult.nameMatch || (!scanResult.schoolMatch && scanResult.type !== 'Giải thưởng'))) ? 'not-allowed' : 'pointer'
                   }}
                 >
                   💾 Lưu thay đổi
