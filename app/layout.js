@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import GlobalBackground from '@/components/GlobalBackground';
 
 function CompleteProfileForm() {
   const { user, login } = useAuth();
@@ -73,12 +74,9 @@ function CompleteProfileForm() {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', background: '#030712', color: 'white', padding: '20px',
+      minHeight: '100vh', background: 'transparent', color: 'white', padding: '20px',
       boxSizing: 'border-box', fontFamily: "'Be Vietnam Pro', sans-serif"
     }}>
-      {/* Background Orbs */}
-      <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'rgba(124, 92, 255, 0.04)', filter: 'blur(100px)', zIndex: 0 }} />
-      <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.04)', filter: 'blur(100px)', zIndex: 0 }} />
 
       <div style={{
         background: '#0F172A', border: '1px solid #1e293b', borderRadius: '16px',
@@ -246,10 +244,6 @@ function LayoutInner({ children }) {
       </div>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="main-content">
-        {/* Ambient floating orbs */}
-        <div className="app-orb app-orb--1" aria-hidden="true" />
-        <div className="app-orb app-orb--2" aria-hidden="true" />
-        <div className="app-orb app-orb--3" aria-hidden="true" />
         {children}
       </main>
     </>
@@ -265,6 +259,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <AuthProvider>
+          <GlobalBackground />
           <LayoutInner>{children}</LayoutInner>
         </AuthProvider>
       </body>

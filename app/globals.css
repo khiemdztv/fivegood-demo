@@ -12,7 +12,7 @@
 /* ── BASE ── */
 .fg {
   min-height: 100vh;
-  background: #030712;
+  background: transparent;
   color: #e2e8f0;
   font-family: 'Be Vietnam Pro', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -20,46 +20,8 @@
   overflow-x: hidden;
 }
 
-/* ── BACKGROUND EFFECTS ── */
-.fg::before {
-  content: '';
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background-image:
-    linear-gradient(rgba(124,92,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124,92,255,0.03) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 20%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 20%, transparent 70%);
-  pointer-events: none; z-index: 0;
-}
+/* BACKGROUND EFFECTS REMOVED (Replaced by unified global background component) */
 .fg > * { position: relative; z-index: 1; }
-
-/* Animated floating orbs */
-.fg-bg-orb {
-  position: fixed; border-radius: 50%; pointer-events: none;
-  filter: blur(80px); z-index: 0;
-}
-.fg-bg-orb--1 {
-  width: 600px; height: 600px; top: -10%; left: -10%;
-  background: radial-gradient(circle, rgba(124,92,255,0.07), transparent 70%);
-  animation: fg-float 20s ease-in-out infinite;
-}
-.fg-bg-orb--2 {
-  width: 500px; height: 500px; top: 30%; right: -15%;
-  background: radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%);
-  animation: fg-float 25s ease-in-out infinite reverse;
-}
-.fg-bg-orb--3 {
-  width: 400px; height: 400px; bottom: 10%; left: 20%;
-  background: radial-gradient(circle, rgba(168,85,247,0.04), transparent 70%);
-  animation: fg-float 18s ease-in-out infinite 5s;
-}
-@keyframes fg-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(30px, -40px) scale(1.05); }
-  50% { transform: translate(-20px, 20px) scale(0.95); }
-  75% { transform: translate(10px, 30px) scale(1.02); }
-}
 
 /* Section glow dividers */
 .fg-section { padding: 96px 0; position: relative; }
@@ -454,25 +416,12 @@
    ══════════════════════════════════════ */
 .lg {
   min-height: 100vh; display: flex; flex-direction: column;
-  background: #030712; color: #e2e8f0;
+  background: transparent; color: #e2e8f0;
   font-family: 'Be Vietnam Pro', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   position: relative; overflow: hidden;
 }
-.lg-orb {
-  position: fixed; border-radius: 50%; pointer-events: none;
-  filter: blur(100px); z-index: 0;
-}
-.lg-orb--1 {
-  width: 500px; height: 500px; bottom: -20%; left: -10%;
-  background: radial-gradient(circle, rgba(124,92,255,0.08), transparent 70%);
-  animation: fg-float 22s ease-in-out infinite;
-}
-.lg-orb--2 {
-  width: 400px; height: 400px; top: -10%; right: -10%;
-  background: radial-gradient(circle, rgba(59,130,246,0.06), transparent 70%);
-  animation: fg-float 18s ease-in-out infinite reverse;
-}
+/* Login orbs removed - using global background */
 
 .lg-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -827,8 +776,8 @@
 
 
 :root {
-
   --bg: #0b0f1a;
+  --bg-color: #030712;
   --surface: #131929;
   --card: #1a2236;
   --border: #243050;
@@ -844,6 +793,12 @@
   --light: #94a3b8;
   --sidebar-w: 260px;
   --header-h: 60px;
+  
+  /* Global Background System variables */
+  --primary-glow: #7C5CFF;
+  --secondary-glow: #3B82F6;
+  --tertiary-glow: #4338CA;
+  --grid-line: rgba(124, 92, 255, 0.03);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -851,7 +806,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: 'Be Vietnam Pro', sans-serif;
   font-size: 14px;
@@ -1000,65 +955,7 @@ body {
   position: relative;
   overflow: hidden;
 }
-/* Subtle grid pattern for internal pages */
-.main-content::before {
-  content: '';
-  position: fixed;
-  top: 0; left: var(--sidebar-w); right: 0; bottom: 0;
-  background-image:
-    linear-gradient(rgba(124,92,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124,92,255,0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 70% 50% at 60% 40%, black 10%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 50% at 60% 40%, black 10%, transparent 80%);
-  pointer-events: none;
-  z-index: 0;
-}
-/* Floating ambient glow */
-.main-content::after {
-  content: '';
-  position: fixed;
-  top: -15%; right: -10%;
-  width: 600px; height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,92,255,0.06), transparent 70%);
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-  animation: app-float 22s ease-in-out infinite;
-}
-@keyframes app-float {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 1; }
-  33% { transform: translate(-30px, 40px) scale(1.08); opacity: 0.8; }
-  66% { transform: translate(20px, -25px) scale(0.94); opacity: 1; }
-}
-/* Extra ambient orbs in main-content */
-.app-orb {
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(100px);
-  z-index: 0;
-  opacity: 0.7;
-}
-.app-orb--1 {
-  width: 500px; height: 500px;
-  bottom: -10%; left: 5%;
-  background: radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%);
-  animation: app-float 28s ease-in-out infinite 3s;
-}
-.app-orb--2 {
-  width: 350px; height: 350px;
-  top: 20%; right: 5%;
-  background: radial-gradient(circle, rgba(168,85,247,0.04), transparent 70%);
-  animation: app-float 24s ease-in-out infinite reverse;
-}
-.app-orb--3 {
-  width: 300px; height: 300px;
-  top: 60%; left: 40%;
-  background: radial-gradient(circle, rgba(6,182,212,0.03), transparent 70%);
-  animation: app-float 30s ease-in-out infinite 7s;
-}
+/* Ambient effects and app-orbs removed - using global background */
 .page-container {
   max-width: 1100px;
   margin: 0 auto;
@@ -1926,4 +1823,133 @@ body {
 }
 @media (max-width: 480px) {
   .criteria-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── GLOBAL BACKGROUND SYSTEM (Premium SaaS) ── */
+.global-bg-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -10;
+  background: var(--bg-color, #030712);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Layer 1: Animated Aurora Gradient */
+.global-bg-aurora {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: radial-gradient(circle at 30% 30%, rgba(124, 92, 255, 0.09), transparent 40%),
+              radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.07), transparent 45%),
+              radial-gradient(circle at 45% 85%, rgba(67, 56, 202, 0.05), transparent 50%);
+  filter: blur(140px);
+  animation: aurora-move 32s ease-in-out infinite alternate;
+  opacity: 0.95;
+}
+
+@keyframes aurora-move {
+  0% { transform: rotate(0deg) translate(0px, 0px) scale(1); }
+  50% { transform: rotate(12deg) translate(3vw, 4vh) scale(1.08); }
+  100% { transform: rotate(-8deg) translate(-3vw, -4vh) scale(0.96); }
+}
+
+/* Layer 2: Subtle Grid Pattern (Drifts horizontally) */
+.global-bg-grid {
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 200%;
+  height: 100%;
+  background-image: 
+    linear-gradient(var(--grid-line, rgba(124, 92, 255, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line, rgba(124, 92, 255, 0.03)) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 90%);
+  animation: grid-drift 75s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes grid-drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(60px); }
+}
+
+/* Layer 3: Floating Glow Orbs (4 blurred circles, 6% - 8% opacity) */
+.global-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.global-bg-orb--1 {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+  top: -8%; left: 12%;
+  animation: orb-float-1 26s ease-in-out infinite alternate;
+}
+
+.global-bg-orb--2 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, var(--secondary-glow) 0%, transparent 70%);
+  bottom: 12%; right: 12%;
+  animation: orb-float-2 32s ease-in-out infinite alternate;
+}
+
+.global-bg-orb--3 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, var(--tertiary-glow) 0%, transparent 70%);
+  top: 38%; left: -6%;
+  animation: orb-float-3 29s ease-in-out infinite alternate;
+}
+
+.global-bg-orb--4 {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+  bottom: -4%; left: 42%;
+  animation: orb-float-4 24s ease-in-out infinite alternate;
+}
+
+@keyframes orb-float-1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(35px, -50px) scale(1.04); }
+  100% { transform: translate(-15px, 25px) scale(0.96); }
+}
+
+@keyframes orb-float-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-45px, 35px) scale(0.96); }
+  100% { transform: translate(25px, -15px) scale(1.04); }
+}
+
+@keyframes orb-float-3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, 25px) scale(1.02); }
+  100% { transform: translate(-25px, -45px) scale(0.98); }
+}
+
+@keyframes orb-float-4 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-25px, -35px) scale(1.02); }
+  100% { transform: translate(35px, 15px) scale(0.98); }
+}
+
+/* Layer 4: Noise Texture */
+.global-bg-noise {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  opacity: 0.018; /* Subtle grain layer at ~2% opacity */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
 }
