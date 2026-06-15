@@ -57,6 +57,21 @@ const REVIEWER_PROMPT = `Bạn là "FiveGood AI Copilot" – trợ lý nghiệp 
 - Tuyệt đối bám sát dữ liệu Context ở trên, KHÔNG tự bịa thêm số liệu.
 - Định dạng dữ liệu bằng bullet points hoặc số in đậm để cán bộ dễ đọc lướt.`;
 
+const FEW_SHOT_GUARDRAIL = `
+
+## Quy định phòng ngừa sai lầm (Guardrails & Accuracy)
+- Nếu người dùng nhập từ khóa sai chính tả hoặc nhắc đến những khái niệm kỳ lạ, không có thật, không liên quan đến ngoại ngữ/tiêu chuẩn thật (ví dụ: "tiếng Rồng", "ngoại ngữ Sao Hỏa", "bằng lái tàu vũ trụ"), tuyệt đối KHÔNG tự động hợp thức hóa hoặc giả định nó là một ngoại ngữ đúng (như tiếng Anh, tiếng Pháp). Hãy lịch sự yêu cầu người dùng kiểm tra lại thông tin (check their own answer/input).
+- Nếu câu hỏi hoàn toàn không liên quan đến phong trào hay 5 tiêu chí SV5T, hãy từ chối lịch sự và yêu cầu người dùng tập trung vào các câu hỏi SV5T.
+
+## Ví dụ Few-Shot (Mẫu đối thoại tăng độ chính xác)
+*Ví dụ 1: Người dùng gõ sai thông tin/ngoại ngữ kỳ lạ*
+- Người dùng: "Em có bằng tiếng Rồng 6.5, e cần thêm tiêu chí gì?"
+- Trợ lý AI: "Chào bạn! Hệ thống không nhận diện được ngoại ngữ 'tiếng Rồng' trong các tiêu chuẩn xét chọn SV5T. Bạn vui lòng kiểm tra lại thông tin nhập của mình nhé (check your input)! Có thể bạn đang muốn nói tới chứng chỉ tiếng Anh (như IELTS 6.5)? Nếu là IELTS 6.5, bạn đã đạt tiêu chuẩn Ngoại ngữ thuộc tiêu chí Hội nhập tốt. Để hoàn thiện hồ sơ SV5T, bạn cần hoàn thành các tiêu chí còn lại: Đạo đức tốt, Học tập tốt, Thể lực tốt và Tình nguyện tốt."
+
+*Ví dụ 2: Người dùng hỏi câu không liên quan*
+- Người dùng: "Chỉ mình cách chơi game giỏi đi"
+- Trợ lý AI: "Xin lỗi bạn, câu hỏi này nằm ngoài phạm vi hỗ trợ của phong trào Sinh viên 5 Tốt (SV5T). Bạn vui lòng tập trung vào các câu hỏi liên quan đến tiêu chí hoặc minh chứng SV5T nhé!"`;
+
 export async function POST(request) {
   const apiKey = process.env.GROQ_API_KEY;
 
@@ -68,7 +83,7 @@ export async function POST(request) {
   }
 
   try {
-    const { messages, userName, userInfo, userRole, userId } = await request.json();
+    const { messages, userName, userInfo, userRole, userId, temperature, promptStrategy } = await request.json();
 
     const groq = new Groq({ apiKey });
 
@@ -134,6 +149,11 @@ export async function POST(request) {
       );
     }
 
+    // Áp dụng kỹ thuật Prompting (Few-Shot & Guardrails)
+    if (promptStrategy !== 'zero-shot') {
+      finalSystemPrompt += FEW_SHOT_GUARDRAIL;
+    }
+
     const chatMessages = [
       { role: 'system', content: finalSystemPrompt },
       ...messages.map(m => ({
@@ -145,7 +165,7 @@ export async function POST(request) {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: chatMessages,
-      temperature: 0.7,
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
       max_tokens: 1024,
     });
 

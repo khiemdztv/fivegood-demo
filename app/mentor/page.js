@@ -38,6 +38,8 @@ export default function MentorPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
   const [usedSuggestions, setUsedSuggestions] = useState([]);
+  const [temperature, setTemperature] = useState(0.2);
+  const [promptStrategy, setPromptStrategy] = useState('few-shot');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -55,6 +57,8 @@ export default function MentorPage() {
           userInfo: user?.sub,
           userRole: user?.role,
           userId: user?.dbId || user?.mssv || '20210001',
+          temperature,
+          promptStrategy,
         }),
       });
       const data = await res.json();
@@ -170,6 +174,68 @@ export default function MentorPage() {
 
         {/* Context Panel */}
         <div>
+          {/* AI Settings Panel requested by teacher */}
+          <div className="card fade-in" style={{ border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.03)' }}>
+            <div className="card-title" style={{ color: 'var(--accent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>⚙️ Cấu hình AI (Thầy Đề xuất)</span>
+            </div>
+            
+            {/* Prompt Strategy */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--light)', marginBottom: '6px' }}>
+                Phương pháp Prompting:
+              </label>
+              <select 
+                value={promptStrategy} 
+                onChange={e => setPromptStrategy(e.target.value)} 
+                style={{ 
+                  width: '100%', 
+                  background: 'var(--surface)', 
+                  color: 'var(--text)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '6px 8px', 
+                  fontSize: '12px',
+                  outline: 'none'
+                }}
+              >
+                <option value="few-shot">Few-Shot + Guardrails (Chống lỗi 'tiếng Rồng')</option>
+                <option value="zero-shot">Zero-Shot (Cơ bản - Dễ ảo giác)</option>
+              </select>
+            </div>
+
+            {/* Temperature Slider */}
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--light)', marginBottom: '4px' }}>
+                <span>Độ chính xác (Temperature):</span>
+                <span style={{ color: 'var(--accent2)', fontFamily: 'monospace' }}>{temperature.toFixed(1)}</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.1" 
+                max="1.0" 
+                step="0.1" 
+                value={temperature} 
+                onChange={e => setTemperature(parseFloat(e.target.value))} 
+                style={{ width: '100%', accentColor: 'var(--accent)' }} 
+              />
+              <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '4px', lineHeight: '1.3' }}>
+                {temperature <= 0.2 ? (
+                  <span style={{ color: 'var(--green)' }}>🟢 <strong>Factual Mode</strong>: 1000 câu trả lời như 1. Thích hợp để hỏi quy chế chính xác.</span>
+                ) : temperature <= 0.6 ? (
+                  <span style={{ color: 'var(--yellow)' }}>🟡 <strong>Balanced Mode</strong>: Cân bằng linh hoạt và chính xác.</span>
+                ) : (
+                  <span style={{ color: 'var(--red)' }}>🔴 <strong>Creative Mode</strong>: Linh hoạt/Sáng tạo. Dễ sinh ảo giác nếu hỏi quy chế.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Guardrail explanation */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '10px', fontSize: '10px', color: 'var(--muted)', lineHeight: '1.4' }}>
+              <strong>Giảm lỗi AI:</strong> Khi bật <i>Few-Shot</i>, prompt ép AI từ chối các từ khóa sai lệch (như <code>tiếng Rồng</code>) và yêu cầu người dùng tự kiểm tra đầu vào (self-check).
+            </div>
+          </div>
+
           <div className="card fade-in">
             <div className="card-title">📊 Trạng thái hồ sơ</div>
             {criteria.map(c => (
