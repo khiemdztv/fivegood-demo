@@ -953,9 +953,10 @@ body {
   margin-left: var(--sidebar-w);
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-/* Ambient effects and app-orbs removed - using global background */
+/* Global background shows through – no opaque bg here */
 .page-container {
   max-width: 1100px;
   margin: 0 auto;
@@ -1840,42 +1841,45 @@ body {
   pointer-events: none;
 }
 
-/* Layer 1: Animated Aurora Gradient */
+/* Layer 1: Animated Aurora Gradient – boosted visibility */
 .global-bg-aurora {
   position: absolute;
-  width: 200%;
-  height: 200%;
-  top: -50%;
-  left: -50%;
-  background: radial-gradient(circle at 30% 30%, rgba(124, 92, 255, 0.09), transparent 40%),
-              radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.07), transparent 45%),
-              radial-gradient(circle at 45% 85%, rgba(67, 56, 202, 0.05), transparent 50%);
-  filter: blur(140px);
-  animation: aurora-move 32s ease-in-out infinite alternate;
-  opacity: 0.95;
+  width: 250%;
+  height: 250%;
+  top: -75%;
+  left: -75%;
+  background:
+    radial-gradient(circle at 25% 25%, rgba(124, 92, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 75% 55%, rgba(59, 130, 246, 0.14), transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(67, 56, 202, 0.10), transparent 55%),
+    radial-gradient(circle at 60% 15%, rgba(168, 85, 247, 0.08), transparent 40%);
+  filter: blur(120px);
+  animation: aurora-move 28s ease-in-out infinite alternate;
+  opacity: 1;
 }
 
 @keyframes aurora-move {
-  0% { transform: rotate(0deg) translate(0px, 0px) scale(1); }
-  50% { transform: rotate(12deg) translate(3vw, 4vh) scale(1.08); }
-  100% { transform: rotate(-8deg) translate(-3vw, -4vh) scale(0.96); }
+  0%   { transform: rotate(0deg) translate(0px, 0px) scale(1); }
+  33%  { transform: rotate(8deg) translate(4vw, 3vh) scale(1.06); }
+  66%  { transform: rotate(-5deg) translate(-2vw, 5vh) scale(1.02); }
+  100% { transform: rotate(-10deg) translate(-4vw, -3vh) scale(0.95); }
 }
 
-/* Layer 2: Subtle Grid Pattern (Drifts horizontally) */
+/* Layer 2: Subtle Grid Pattern (Drifts horizontally) – boosted */
 .global-bg-grid {
   position: absolute;
   top: 0;
   left: -50%;
   width: 200%;
   height: 100%;
-  background-image: 
-    linear-gradient(var(--grid-line, rgba(124, 92, 255, 0.03)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line, rgba(124, 92, 255, 0.03)) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(124, 92, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 92, 255, 0.045) 1px, transparent 1px);
   background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 90%);
-  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 90%);
-  animation: grid-drift 75s linear infinite;
-  opacity: 0.8;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 85%);
+  animation: grid-drift 60s linear infinite;
+  opacity: 1;
 }
 
 @keyframes grid-drift {
@@ -1883,65 +1887,79 @@ body {
   100% { transform: translateX(60px); }
 }
 
-/* Layer 3: Floating Glow Orbs (4 blurred circles, 6% - 8% opacity) */
+/* Layer 3: Floating Glow Orbs – boosted to 10-16% opacity */
 .global-bg-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(110px);
-  opacity: 0.07;
+  filter: blur(100px);
+  opacity: 0.14;
   pointer-events: none;
 }
 
 .global-bg-orb--1 {
-  width: 480px; height: 480px;
+  width: 550px; height: 550px;
   background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-  top: -8%; left: 12%;
-  animation: orb-float-1 26s ease-in-out infinite alternate;
+  top: -10%; left: 8%;
+  animation: orb-float-1 22s ease-in-out infinite alternate;
 }
 
 .global-bg-orb--2 {
-  width: 380px; height: 380px;
+  width: 450px; height: 450px;
   background: radial-gradient(circle, var(--secondary-glow) 0%, transparent 70%);
-  bottom: 12%; right: 12%;
-  animation: orb-float-2 32s ease-in-out infinite alternate;
+  bottom: 8%; right: 8%;
+  animation: orb-float-2 28s ease-in-out infinite alternate;
 }
 
 .global-bg-orb--3 {
-  width: 420px; height: 420px;
+  width: 500px; height: 500px;
   background: radial-gradient(circle, var(--tertiary-glow) 0%, transparent 70%);
-  top: 38%; left: -6%;
-  animation: orb-float-3 29s ease-in-out infinite alternate;
+  top: 35%; left: -8%;
+  animation: orb-float-3 25s ease-in-out infinite alternate;
 }
 
 .global-bg-orb--4 {
-  width: 320px; height: 320px;
+  width: 400px; height: 400px;
   background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-  bottom: -4%; left: 42%;
-  animation: orb-float-4 24s ease-in-out infinite alternate;
+  bottom: -6%; left: 38%;
+  animation: orb-float-4 20s ease-in-out infinite alternate;
+}
+
+.global-bg-orb--5 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+  top: 15%; right: -5%;
+  opacity: 0.10;
+  animation: orb-float-5 30s ease-in-out infinite alternate;
 }
 
 @keyframes orb-float-1 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(35px, -50px) scale(1.04); }
-  100% { transform: translate(-15px, 25px) scale(0.96); }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -60px) scale(1.06); }
+  100% { transform: translate(-20px, 30px) scale(0.94); }
 }
 
 @keyframes orb-float-2 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-45px, 35px) scale(0.96); }
-  100% { transform: translate(25px, -15px) scale(1.04); }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-50px, 40px) scale(0.94); }
+  100% { transform: translate(30px, -20px) scale(1.06); }
 }
 
 @keyframes orb-float-3 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(50px, 25px) scale(1.02); }
-  100% { transform: translate(-25px, -45px) scale(0.98); }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(60px, 30px) scale(1.04); }
+  100% { transform: translate(-30px, -50px) scale(0.96); }
 }
 
 @keyframes orb-float-4 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-25px, -35px) scale(1.02); }
-  100% { transform: translate(35px, 15px) scale(0.98); }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-30px, -40px) scale(1.04); }
+  100% { transform: translate(40px, 20px) scale(0.96); }
+}
+
+@keyframes orb-float-5 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-20px, 50px) scale(1.08); }
+  100% { transform: translate(30px, -30px) scale(0.92); }
 }
 
 /* Layer 4: Noise Texture */
@@ -1949,7 +1967,79 @@ body {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   width: 100%; height: 100%;
-  opacity: 0.018; /* Subtle grain layer at ~2% opacity */
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════
+   PER-PAGE AMBIENT GLOW ACCENTS
+   Floating decorative glows for each inner page
+   ═══════════════════════════════════════════════════ */
+
+/* Shared page ambient glow base */
+.page-container::before,
+.page-container::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.page-container::before {
+  width: 600px; height: 600px;
+  top: -15%; right: -10%;
+  background: radial-gradient(circle, rgba(124, 92, 255, 0.12), transparent 70%);
+  animation: page-glow-1 20s ease-in-out infinite alternate;
+}
+
+.page-container::after {
+  width: 500px; height: 500px;
+  bottom: -10%; left: -5%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.10), transparent 70%);
+  animation: page-glow-2 25s ease-in-out infinite alternate;
+}
+
+@keyframes page-glow-1 {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50%  { transform: translate(-30px, 40px) scale(1.1); opacity: 1; }
+  100% { transform: translate(20px, -30px) scale(0.9); opacity: 0.7; }
+}
+
+@keyframes page-glow-2 {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50%  { transform: translate(40px, -20px) scale(1.1); opacity: 1; }
+  100% { transform: translate(-20px, 30px) scale(0.9); opacity: 0.8; }
+}
+
+/* ── Section Header Decorative Line ── */
+.section-header {
+  position: relative;
+}
+.section-header::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(124, 92, 255, 0.2), rgba(59, 130, 246, 0.15), transparent);
+}
+
+/* ── Card hover glow accent ── */
+.card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px; bottom: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.15), transparent 40%, transparent 60%, rgba(59, 130, 246, 0.1));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+  pointer-events: none;
+}
+.card:hover::before {
+  opacity: 1;
 }

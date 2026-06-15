@@ -10,11 +10,12 @@ export default function GlobalBackground() {
       {/* Layer 2: Subtle Grid Pattern */}
       <div className="global-bg-grid" />
 
-      {/* Layer 3: Floating Glow Orbs (4 distinct floating blur orbs) */}
+      {/* Layer 3: Floating Glow Orbs (5 distinct floating blur orbs) */}
       <div className="global-bg-orb global-bg-orb--1" />
       <div className="global-bg-orb global-bg-orb--2" />
       <div className="global-bg-orb global-bg-orb--3" />
       <div className="global-bg-orb global-bg-orb--4" />
+      <div className="global-bg-orb global-bg-orb--5" />
 
       {/* Layer 4: Noise Texture */}
       <div className="global-bg-noise" />
