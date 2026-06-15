@@ -1,7 +1,7 @@
 'use client';
 import { criteria as defaultCriteria, evidences as demoEvidences } from '@/data/mockData';
 import { useAuth } from '@/lib/auth';
-import { getUserProgress, getUserEvidences, createUser, findUserByMssv } from '@/lib/supabase';
+import { supabase, getUserProgress, getUserEvidences, createUser, findUserByMssv } from '@/lib/supabase';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
@@ -80,6 +80,79 @@ export default function DashboardPage() {
   const [myCriteria, setMyCriteria] = useState([]);
   const [myEvidences, setMyEvidences] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // State cho Modal Edit Profile
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', mssv: '', school: '', faculty: '' });
+  const [modalSaving, setModalSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setEditForm({
+        name: user.name || '',
+        mssv: user.mssv || '',
+        school: user.school || '',
+        faculty: user.faculty || ''
+      });
+    }
+  }, [user]);
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim() || !editForm.school.trim()) {
+      setModalError('Họ tên và Trường không được bỏ trống');
+      return;
+    }
+    setModalSaving(true);
+    setModalError('');
+    try {
+      const dbId = user.dbId || user.id;
+      if (supabase) {
+        // 1. Cập nhật bảng public.users
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({
+            name: editForm.name,
+            mssv: editForm.mssv,
+            school: editForm.school,
+            faculty: editForm.faculty
+          })
+          .eq('id', dbId);
+        
+        if (dbError) throw new Error(dbError.message);
+        
+        // 2. Cập nhật metadata của Auth user
+        await supabase.auth.updateUser({
+          data: {
+            name: editForm.name,
+            mssv: editForm.mssv,
+            school: editForm.school,
+            faculty: editForm.faculty
+          }
+        });
+      }
+
+      // 3. Cập nhật local session trong context
+      const updatedUser = {
+        ...user,
+        name: editForm.name,
+        mssv: editForm.mssv,
+        school: editForm.school,
+        faculty: editForm.faculty,
+        sub: user.role === 'student'
+          ? `MSSV: ${editForm.mssv} · ${editForm.faculty} · ${editForm.school}`
+          : `${editForm.faculty} · ${editForm.school}`
+      };
+      
+      login(updatedUser);
+      setIsModalOpen(false);
+    } catch (err) {
+      setModalError('Lỗi cập nhật: ' + err.message);
+    } finally {
+      setModalSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -157,12 +230,17 @@ export default function DashboardPage() {
   return (
     <div className="page-container">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }} className="fade-in">
-        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>🎓</div>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Xin chào, {displayName}!</h1>
-          <p style={{ color: 'var(--muted)', fontSize: '13px' }}>{user?.sub || ''}</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }} className="fade-in">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>🎓</div>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Xin chào, {displayName}!</h1>
+            <p style={{ color: 'var(--muted)', fontSize: '13px' }}>{user?.sub || ''}</p>
+          </div>
         </div>
+        <button className="btn btn-update" onClick={() => setIsModalOpen(true)} style={{ padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ✏️ Chỉnh sửa thông tin
+        </button>
       </div>
 
       {/* Overall Progress */}
@@ -249,6 +327,120 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)', position: 'relative'
+          }}>
+            <button onClick={() => setIsModalOpen(false)} style={{
+              position: 'absolute', top: '16px', right: '16px', background: 'none',
+              border: 'none', color: 'var(--muted)', fontSize: '20px', cursor: 'pointer'
+            }}>✕</button>
+            
+            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)' }}>
+              ✏️ Chỉnh sửa thông tin cá nhân
+            </h2>
+            <p style={{ color: 'var(--muted)', fontSize: '12px', marginBottom: '24px' }}>
+              Cập nhật thông tin hồ sơ của bạn trên hệ thống
+            </p>
+
+            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Họ và tên *</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border)', borderRadius: '8px', color: 'white',
+                    fontFamily: 'inherit', fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>MSSV / Mã cán bộ</label>
+                <input
+                  type="text"
+                  value={editForm.mssv}
+                  onChange={e => setEditForm(f => ({ ...f, mssv: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border)', borderRadius: '8px', color: 'white',
+                    fontFamily: 'inherit', fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                  }}
+                  placeholder="Nhập MSSV (Ví dụ: 20210001 để xem dữ liệu mock)"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Trường Đại học *</label>
+                <input
+                  type="text"
+                  value={editForm.school}
+                  onChange={e => setEditForm(f => ({ ...f, school: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border)', borderRadius: '8px', color: 'white',
+                    fontFamily: 'inherit', fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Khoa / Ngành hoặc Chức vụ</label>
+                <input
+                  type="text"
+                  value={editForm.faculty}
+                  onChange={e => setEditForm(f => ({ ...f, faculty: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border)', borderRadius: '8px', color: 'white',
+                    fontFamily: 'inherit', fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {modalError && (
+                <div style={{ color: 'var(--red)', fontSize: '12px' }}>
+                  ⚠️ {modalError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={modalSaving}
+                  className="btn btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {modalSaving ? '⏳ Đang lưu...' : '✅ Lưu thay đổi'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="btn btn-update"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

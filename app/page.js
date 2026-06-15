@@ -1,166 +1,401 @@
+'use client';
 import Link from 'next/link';
-
-const features = [
-  { icon: '🤖', title: 'AI Mentor cá nhân hóa', desc: 'Trợ lý AI hiểu trạng thái hồ sơ, gợi ý hành động tiếp theo, trả lời theo context cụ thể của từng sinh viên.', color: '#8b5cf6', href: '/mentor', side: 'sv' },
-  { icon: '📊', title: 'Journey Dashboard', desc: 'Dashboard trực quan 5 tiêu chí với progress ring, checklist, milestone – biến quy trình hành chính thành hành trình phấn đấu.', color: '#3b82f6', href: '/dashboard', side: 'sv' },
-  { icon: '🔍', title: 'Evidence Intelligence', desc: 'OCR + AI phân loại minh chứng tự động. Bóc tách thông tin, gắn nhãn Valid/Suspect/Invalid, đưa risk score.', color: '#06b6d4', href: '/upload', side: 'both' },
-  { icon: '🏛️', title: 'Reviewer Copilot', desc: 'Dashboard AI-assisted cho cán bộ Hội: AI summary, phân loại risk, duyệt nhanh với audit log tự động.', color: '#10b981', href: '/reviewer', side: 'cb' },
-  { icon: '📈', title: 'Thống kê & Batch Processing', desc: 'Quản lý hàng ngàn hồ sơ, duyệt hàng loạt, phân tích theo khoa, báo cáo cho cấp Trung ương.', color: '#f59e0b', href: '/analytics', side: 'cb' },
-  { icon: '🎫', title: 'Digital Passport', desc: 'Hồ sơ năng lực số sau khi đạt danh hiệu – timeline, thành tích, QR chia sẻ.', color: '#ec4899', href: '/passport', side: 'sv' },
-];
-
-
-const compareData = [
-  { aspect: 'Hướng dẫn sinh viên', before: 'FAQ thủ công / file PDF', after: 'AI Mentor cá nhân hóa' },
-  { aspect: 'Chuẩn bị hồ sơ', before: 'Tự gom giấy tờ, nộp qua form', after: 'Journey Dashboard + checklist' },
-  { aspect: 'Xử lý minh chứng', before: 'Cán bộ xem thủ công 100%', after: 'OCR + AI extraction + AI label' },
-  { aspect: 'Duyệt hồ sơ', before: 'Reviewer đọc toàn bộ từ đầu', after: 'AI Copilot tóm tắt + phân loại' },
-  { aspect: 'Sau xét duyệt', before: 'Dừng ở kết quả hành chính', after: 'Digital Passport năng lực số' },
-  { aspect: 'Tối ưu trải nghiệm', before: 'Đánh giá cảm tính', after: 'SmartUX data-driven' },
-];
+import { useAuth } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function HomePage() {
+  const { login, getUsers, ROLE_DEFAULTS } = useAuth();
+  const router = useRouter();
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('overview');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 30);
+      const sections = ['overview','features','process','showcase','architecture','impact','demo'];
+      for (const id of [...sections].reverse()) {
+        const el = document.getElementById(id);
+        if (el && window.scrollY >= el.offsetTop - 200) { setActiveSection(id); break; }
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const go = (role) => {
+    router.push(`/login?role=${role}`);
+  };
+
+  const navLinks = [
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'features', label: 'Tính năng' },
+    { id: 'process', label: 'Quy trình' },
+    { id: 'impact', label: 'Hiệu quả' },
+    { id: 'demo', label: 'Trải nghiệm' },
+  ];
+
   return (
-    <>
-      {/* HERO */}
-      <div className="hero">
-        <div className="hero-badge">🏆 Vietnamese Student HackAIthon 2026 · Bảng B Challenger · Đề tài 5</div>
-        <h1>FiveGood Journey</h1>
-        <p className="hero-sub">
-          AI đồng hành cùng hành trình trở thành <strong>Sinh viên 5 tốt</strong> — Nền tảng AI hai chiều
-          hỗ trợ sinh viên và cán bộ Hội, từ chuẩn bị minh chứng đến xét duyệt và hồ sơ năng lực số.
-        </p>
-        <div className="hero-chips">
-          <div className="hero-chip"><span className="dot"></span> Demo Live</div>
-          <div className="hero-chip">🤖 Tích hợp 8 VNPT AI APIs</div>
-          <div className="hero-chip">🎓 Dành cho Sinh viên & Cán bộ Hội</div>
-          <div className="hero-chip">📅 HackAIthon 2026</div>
-        </div>
-        <div className="cta-row">
-          <Link href="/login" className="cta-btn cta-btn--primary">🚀 Đăng nhập Demo</Link>
-          <Link href="/architecture" className="cta-btn cta-btn--secondary">📐 Kiến trúc hệ thống</Link>
-        </div>
-      </div>
-
-      <div className="page-container">
-        {/* STATS */}
-        <div className="stats-grid fade-in">
-          <div className="stat-card">
-            <div className="stat-value" style={{color:'var(--accent)'}}>5</div>
-            <div className="stat-label">Giá trị cốt lõi</div>
+    <div className="fg">
+      {/* Background effects */}
+      <div className="fg-bg-orb fg-bg-orb--1" />
+      <div className="fg-bg-orb fg-bg-orb--2" />
+      <div className="fg-bg-orb fg-bg-orb--3" />
+      {/* ━━ NAV ━━ */}
+      <nav className={`fg-nav ${scrolled ? 'fg-nav--s' : ''}`}>
+        <div className="fg-nav-inner">
+          <Link href="/" className="fg-logo">⭐ FiveGood Journey</Link>
+          <div className="fg-nav-links">
+            {navLinks.map(n => (
+              <a key={n.id} href={`#${n.id}`} className={`fg-nav-link ${activeSection === n.id ? 'fg-nav-link--active' : ''}`}>{n.label}</a>
+            ))}
           </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{color:'var(--accent3)'}}>8</div>
-            <div className="stat-label">VNPT APIs tích hợp</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{color:'var(--green)'}}>70-80%</div>
-            <div className="stat-label">Giảm thao tác thủ công</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{color:'var(--accent2)'}}>3 lớp</div>
-            <div className="stat-label">Xác minh minh chứng</div>
-          </div>
+          <Link href="/login" className="fg-nav-cta">Đăng nhập</Link>
         </div>
+      </nav>
 
-        {/* FEATURES */}
-        <div className="section-header">
-          <div className="section-num">1</div>
-          <div>
-            <h2>5 Giá trị cốt lõi</h2>
-            <p>Cụm đổi mới liên kết tạo nên sự khác biệt</p>
-          </div>
-        </div>
-
-        <div className="features-grid">
-          {features.map((f, i) => (
-            <Link href={f.href} key={i} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="feature-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                  <div className="feature-icon" style={{ background: `${f.color}15`, border: `1px solid ${f.color}40`, marginBottom: 0 }}>
-                    {f.icon}
-                  </div>
-                  <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', letterSpacing: '0.05em',
-                    background: f.side === 'sv' ? 'rgba(59,130,246,0.12)' : f.side === 'cb' ? 'rgba(139,92,246,0.12)' : 'rgba(6,182,212,0.12)',
-                    color: f.side === 'sv' ? 'var(--accent)' : f.side === 'cb' ? 'var(--accent3)' : 'var(--accent2)',
-                    border: `1px solid ${f.side === 'sv' ? 'rgba(59,130,246,0.25)' : f.side === 'cb' ? 'rgba(139,92,246,0.25)' : 'rgba(6,182,212,0.25)'}`,
-                  }}>{f.side === 'sv' ? 'SINH VIÊN' : f.side === 'cb' ? 'CÁN BỘ HỘI' : 'CẢ HAI'}</span>
-                </div>
-                <h3 style={{ color: f.color }}>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <div className="divider"></div>
-
-        {/* COMPARE */}
-        <div className="section-header">
-          <div className="section-num">2</div>
-          <div>
-            <h2>So sánh trước và sau</h2>
-            <p>FiveGood Journey thay đổi toàn bộ quy trình</p>
-          </div>
-        </div>
-
-        <div className="card">
-          <table className="compare-table">
-            <thead>
-              <tr>
-                <th>Khía cạnh</th>
-                <th>❌ Cách làm cũ</th>
-                <th>✅ FiveGood Journey</th>
-              </tr>
-            </thead>
-            <tbody>
-              {compareData.map((row, i) => (
-                <tr key={i}>
-                  <td style={{fontWeight:600, color:'var(--text)'}}>{row.aspect}</td>
-                  <td>{row.before}</td>
-                  <td>{row.after}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="divider"></div>
-
-        {/* VNPT APIS */}
-        <div className="section-header">
-          <div className="section-num">3</div>
-          <div>
-            <h2>Tận dụng hệ sinh thái VNPT AI</h2>
-            <p>8/8 nhóm API được mapping chuyên biệt</p>
-          </div>
-        </div>
-
-        <div className="features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          {[
-            { icon: '📄', name: 'SmartReader', role: 'OCR minh chứng', color: '#06b6d4' },
-            { icon: '🔐', name: 'eKYC', role: 'Xác minh giấy tờ', color: '#3b82f6' },
-            { icon: '💬', name: 'Smartbot', role: 'AI Mentor chatbot', color: '#8b5cf6' },
-            { icon: '🎙️', name: 'SmartVoice', role: 'STT & TTS', color: '#ec4899' },
-            { icon: '📊', name: 'SmartUX', role: 'Analytics UX', color: '#f59e0b' },
-            { icon: '👁️', name: 'SmartVision', role: 'Nhận diện hình ảnh', color: '#10b981' },
-            { icon: '🌐', name: 'vnSocial', role: 'Phân tích MXH', color: '#ef4444' },
-            { icon: '😀', name: 'vnFace', role: 'Face matching', color: '#a855f7' },
-          ].map((api, i) => (
-            <div key={i} className="feature-card" style={{ padding: '18px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', marginBottom: '8px' }}>{api.icon}</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 600, color: api.color, marginBottom: '4px', padding: '2px 8px', background: `${api.color}18`, borderRadius: '4px', display: 'inline-block' }}>{api.name}</div>
-              <p style={{ fontSize: '11px', color: 'var(--light)', marginTop: '6px' }}>{api.role}</p>
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 1 — HERO
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="overview" className="fg-hero">
+        <div className="fg-hero-glow" />
+        <div className="fg-hero-inner">
+          {/* Left */}
+          <div className="fg-hero-left">
+            <div className="fg-badge">🏆 HackAIthon 2026 · Bảng B · Đề tài 5</div>
+            <h1 className="fg-hero-h1">
+              <span className="fg-hero-h1-brand">FiveGood Journey</span>
+              <span className="fg-hero-h1-sub">Nền tảng AI hỗ trợ toàn bộ</span>
+              <span className="fg-hero-h1-sub">hành trình <strong className="fg-hero-accent">Sinh viên 5 Tốt</strong></span>
+            </h1>
+            <p className="fg-hero-desc">
+              Từ chuẩn bị minh chứng, kiểm tra bằng AI, xét duyệt<br/>
+              đến Digital Passport — tất cả trên một nền tảng duy nhất.
+            </p>
+            <div className="fg-hero-ctas">
+              <button className="fg-btn fg-btn--primary" onClick={() => go('student')}>Trải nghiệm ngay →</button>
+              <Link href="/architecture" className="fg-btn fg-btn--ghost">Xem Demo ▶</Link>
             </div>
-          ))}
-        </div>
+            <div className="fg-trust">
+              {['🤖 AI hỗ trợ 24/7', '⚡ Xử lý nhanh 3-5 phút', '🔒 Bảo mật tuyệt đối'].map((t,i) => (
+                <span key={i} className="fg-trust-item">{t}</span>
+              ))}
+            </div>
+          </div>
 
-        {/* FOOTER */}
-        <div className="footer" style={{borderTop: 'none', padding: '40px 0 20px', justifyContent: 'center', flexDirection: 'column', gap: '8px'}}>
-          <div style={{fontSize:'13px', fontWeight: 600, color: 'var(--light)'}}>FiveGood Journey · SV5T Copilot</div>
-          <div style={{fontSize:'11px'}}>Vietnamese Student HackAIthon 2026 · Bảng B Challenger · Đề tài 5</div>
+          {/* Right — Dashboard Mockup */}
+          <div className="fg-hero-right">
+            <div className="fg-mock">
+              {/* Sidebar mini */}
+              <div className="fg-mock-side">
+                <div className="fg-mock-side-logo">⭐</div>
+                {['📊 Tổng quan','📁 Hồ sơ của tôi','🤖 AI Mentor','🎫 Digital Passport','📋 Thống kê','⚙️ Cài đặt'].map((item,i) => (
+                  <div key={i} className={`fg-mock-side-item ${i===0?'fg-mock-side-item--active':''}`}>{item}</div>
+                ))}
+              </div>
+
+              {/* Main content */}
+              <div className="fg-mock-main">
+                {/* Top bar */}
+                <div className="fg-mock-topbar">
+                  <div className="fg-mock-user">
+                    <span className="fg-mock-user-name">Xin chào, <strong>Nguyễn Văn A</strong> 👋</span>
+                    <span className="fg-mock-user-sub">Đây là tổng quan hồ sơ SV5T của bạn</span>
+                  </div>
+                  <div className="fg-mock-score-wrap">
+                    <span className="fg-mock-score-label">Hoàn thành hồ sơ</span>
+                    <div className="fg-mock-score-ring">
+                      <svg viewBox="0 0 36 36">
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#1e293b" strokeWidth="3"/>
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#7C5CFF" strokeWidth="3" strokeDasharray="82, 100" strokeLinecap="round"/>
+                      </svg>
+                      <span>82%</span>
+                    </div>
+                    <span className="fg-mock-score-detail">325 / 395 điểm</span>
+                  </div>
+                </div>
+
+                {/* 5 criteria */}
+                <div className="fg-mock-criteria-label">5 tiêu chí SV5T</div>
+                <div className="fg-mock-criteria">
+                  {[
+                    { name: 'Đạo đức', pct: 100, color: '#22c55e' },
+                    { name: 'Học tập', pct: 90, color: '#3B82F6' },
+                    { name: 'Thể lực', pct: 70, color: '#f59e0b' },
+                    { name: 'Tình nguyện', pct: 90, color: '#7C5CFF' },
+                    { name: 'Hội nhập', pct: 50, color: '#ec4899' },
+                  ].map((c,i) => (
+                    <div key={i} className="fg-mock-crit">
+                      <span className="fg-mock-crit-name">{c.name}</span>
+                      <div className="fg-mock-crit-bar"><div style={{width:`${c.pct}%`,background:c.color}}/></div>
+                      <span className="fg-mock-crit-pct" style={{color:c.color}}>{c.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bottom cards */}
+                <div className="fg-mock-bottom">
+                  <div className="fg-mock-card">
+                    <div className="fg-mock-card-h">🤖 AI Mentor gợi ý</div>
+                    <ul className="fg-mock-card-list">
+                      <li>Bạn còn thiếu 2 hoạt động tình nguyện</li>
+                      <li>Tham gia 1 hoạt động hội nhập quốc tế</li>
+                      <li>Bổ sung chứng chỉ ngoại ngữ</li>
+                    </ul>
+                    <span className="fg-mock-card-link">Chat với AI Mentor →</span>
+                  </div>
+                  <div className="fg-mock-card">
+                    <div className="fg-mock-card-h">📄 Hồ sơ còn thiếu</div>
+                    <ul className="fg-mock-card-list">
+                      <li>Giấy chứng nhận tình nguyện (1)</li>
+                      <li>Minh chứng hội nhập (1)</li>
+                    </ul>
+                    <span className="fg-mock-card-link fg-mock-card-link--blue">Xem chi tiết →</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 2 — CORE FEATURES
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="features" className="fg-section fg-section--alt">
+        <div className="fg-container">
+          <h2 className="fg-h2">Nền tảng AI toàn diện</h2>
+          <div className="fg-features">
+            {[
+              { icon: '🤖', title: 'AI Mentor', desc: 'AI đồng hành, gợi ý hoạt động và kiểm tra tiến độ đạt chuẩn.', detail: 'Bạn còn thiếu gì để đạt SV5T?', sub: ['2 hoạt động tình nguyện', '1 hoạt động hội nhập', 'Giấy chứng nhận ngoại ngữ'], tag: 'Confidence: 96%' },
+              { icon: '📷', title: 'OCR & Xác thực', desc: 'Công nghệ OCR trích xuất và xác minh minh chứng chính xác.', detail: 'Trích xuất tự động', sub: ['Họ tên, MSSV', 'Ngày, nơi cấp', 'Loại chứng chỉ'], tag: 'Độ tin cậy: 98%' },
+              { icon: '🎫', title: 'Digital Passport', desc: 'Lưu trữ thành tích, xuất hồ sơ SV5T điện tử chỉ 1 click.', detail: 'Digital Passport', sub: ['Nguyễn Văn A', 'MSSV: 20210001', 'ĐH Bách Khoa'], tag: null },
+              { icon: '📊', title: 'Committee Dashboard', desc: 'Duyệt hồ sơ hàng loạt, thống kê và báo cáo tự động.', detail: 'Thống kê hồ sơ', sub: ['1,248 hồ sơ', 'Duyệt: 89%', 'Chờ xét: 11%'], tag: null },
+            ].map((f,i) => (
+              <div key={i} className="fg-feat">
+                <div className="fg-feat-top">
+                  <div className="fg-feat-icon">{f.icon}</div>
+                  <h3 className="fg-feat-title">{f.title}</h3>
+                  <p className="fg-feat-desc">{f.desc}</p>
+                </div>
+                {/* Mini preview */}
+                <div className="fg-feat-preview">
+                  <div className="fg-feat-preview-h">{f.detail}</div>
+                  <ul className="fg-feat-preview-list">
+                    {f.sub.map((s,j) => <li key={j}>• {s}</li>)}
+                  </ul>
+                  {f.tag && <div className="fg-feat-preview-tag">{f.tag}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 3 — PRODUCT FLOW
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="process" className="fg-section">
+        <div className="fg-container">
+          <h2 className="fg-h2">Quy trình hoạt động</h2>
+          <div className="fg-flow">
+            <div className="fg-flow-line" />
+            {[
+              { num: '01', icon: '📤', title: 'Upload minh chứng', desc: 'Sinh viên tải lên minh chứng cho các tiêu chí' },
+              { num: '02', icon: '🔄', title: 'OCR & AI kiểm tra', desc: 'Hệ thống OCR trích xuất và AI kiểm tra, đánh giá' },
+              { num: '03', icon: '🤖', title: 'AI đánh giá & gợi ý', desc: 'AI phân tích, đánh giá và gợi ý hoạt động còn thiếu' },
+              { num: '04', icon: '👥', title: 'Cán bộ Hội xét duyệt', desc: 'Cán bộ Hội xem xét và duyệt hồ sơ' },
+              { num: '05', icon: '✅', title: 'Hoàn thành', desc: 'Cập nhật kết quả và lưu trong Digital Passport' },
+            ].map((s,i) => (
+              <div key={i} className="fg-flow-step">
+                <div className="fg-flow-num">{s.num}</div>
+                <div className="fg-flow-icon">{s.icon}</div>
+                <div className="fg-flow-title">{s.title}</div>
+                <div className="fg-flow-desc">{s.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 4 — AI SHOWCASE
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="showcase" className="fg-section fg-section--alt">
+        <div className="fg-container">
+          <h2 className="fg-h2">AI Showcase</h2>
+          <div className="fg-showcase">
+            {/* AI Mentor Chat */}
+            <div className="fg-show-card">
+              <div className="fg-show-label">AI Mentor</div>
+              <div className="fg-chat">
+                <div className="fg-chat-msg fg-chat-msg--user">
+                  <div className="fg-chat-ava fg-chat-ava--user">SV</div>
+                  <div className="fg-chat-bubble">
+                    <div className="fg-chat-role">Sinh viên</div>
+                    Tôi còn thiếu gì để đạt SV5T?
+                  </div>
+                </div>
+                <div className="fg-chat-msg fg-chat-msg--ai">
+                  <div className="fg-chat-ava fg-chat-ava--ai">🤖</div>
+                  <div className="fg-chat-bubble fg-chat-bubble--ai">
+                    <div className="fg-chat-role">AI Mentor</div>
+                    Bạn còn thiếu:
+                    <ul>
+                      <li>• 10 giờ tình nguyện</li>
+                      <li>• 1 hoạt động hội nhập</li>
+                      <li>• Chứng chỉ ngoại ngữ</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* OCR Extraction */}
+            <div className="fg-show-card">
+              <div className="fg-show-label">OCR trích xuất</div>
+              <div className="fg-ocr">
+                <div className="fg-ocr-doc">
+                  <div className="fg-ocr-doc-icon">📄</div>
+                  <span>giay_xac_nhan.pdf</span>
+                </div>
+                <div className="fg-ocr-arrow">→</div>
+                <div className="fg-ocr-result">
+                  <div className="fg-ocr-row"><span>Họ tên</span><strong>Nguyễn Văn A</strong></div>
+                  <div className="fg-ocr-row"><span>Đơn vị</span><strong>THCS Hồ Chí Minh</strong></div>
+                  <div className="fg-ocr-row"><span>Thời gian</span><strong>12/03/2025</strong></div>
+                  <div className="fg-ocr-row"><span>Kết quả</span><strong className="fg-ocr-pass">Hợp lệ (98%)</strong></div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Scoring */}
+            <div className="fg-show-card">
+              <div className="fg-show-label">AI Scoring</div>
+              <div className="fg-scoring">
+                <div className="fg-scoring-ring">
+                  <svg viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#1e293b" strokeWidth="2.5"/>
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeDasharray="98, 100" strokeLinecap="round"/>
+                  </svg>
+                  <div className="fg-scoring-val">98<span>%</span></div>
+                  <div className="fg-scoring-sub">Confidence</div>
+                </div>
+                <div className="fg-scoring-list">
+                  <div className="fg-scoring-label">Đủ điều kiện:</div>
+                  {['Đạo đức','Học tập','Thể lực','Tình nguyện','Hội nhập'].map((c,i) => (
+                    <div key={i} className="fg-scoring-item">
+                      <span className="fg-scoring-check">✓</span> {c}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 5 — ARCHITECTURE
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="architecture" className="fg-section">
+        <div className="fg-container">
+          <h2 className="fg-h2">Kiến trúc hệ thống</h2>
+          <div className="fg-arch">
+            {[
+              { icon: '⚛️', title: 'Frontend', sub: 'Next.js' },
+              { icon: '🗄️', title: 'Backend', sub: 'Supabase' },
+              { icon: '🧠', title: 'AI Layer', sub: 'Groq + Llama 3.3' },
+              { icon: '📷', title: 'OCR Service', sub: 'VNPT OCR' },
+              { icon: '💾', title: 'Storage', sub: 'Supabase Storage' },
+            ].map((a,i) => (
+              <div key={i} className="fg-arch-item">
+                {i > 0 && <div className="fg-arch-arrow">- - - →</div>}
+                <div className="fg-arch-card">
+                  <div className="fg-arch-icon">{a.icon}</div>
+                  <div className="fg-arch-title">{a.title}</div>
+                  <div className="fg-arch-sub">{a.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 6 — IMPACT
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="impact" className="fg-section fg-section--alt">
+        <div className="fg-container">
+          <h2 className="fg-h2">Hiệu quả vượt trội</h2>
+          <div className="fg-impact">
+            {[
+              { icon: '📄', value: '12,450+', label: 'Minh chứng đã xử lý', color: '#3B82F6' },
+              { icon: '⚡', value: '3.2 phút', label: 'Thời gian duyệt trung bình', color: '#f59e0b' },
+              { icon: '🎯', value: '96%', label: 'Độ chính xác OCR', color: '#22c55e' },
+              { icon: '📉', value: '82%', label: 'Giảm thao tác thủ công', color: '#7C5CFF' },
+            ].map((m,i) => (
+              <div key={i} className="fg-impact-card">
+                <div className="fg-impact-icon" style={{color:m.color, background:`${m.color}15`}}>{m.icon}</div>
+                <div className="fg-impact-value">{m.value}</div>
+                <div className="fg-impact-label">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION 7 — DEMO ACCESS
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section id="demo" className="fg-section">
+        <div className="fg-container">
+          <h2 className="fg-h2">Trải nghiệm nền tảng</h2>
+          <p className="fg-h2-sub">Chọn vai trò để khám phá các tính năng phù hợp</p>
+          <div className="fg-demo">
+            <div className="fg-demo-card fg-demo-card--sv">
+              <div className="fg-demo-header">
+                <span className="fg-demo-tag">Trải nghiệm với vai trò</span>
+                <h3>Sinh viên</h3>
+              </div>
+              <ul className="fg-demo-list">
+                <li>◇ Dashboard cá nhân</li>
+                <li>◇ AI Mentor 24/7</li>
+                <li>◇ Digital Passport</li>
+              </ul>
+              <button className="fg-btn fg-btn--primary fg-btn--full" onClick={() => go('student')}>
+                Vào Demo Sinh viên →
+              </button>
+            </div>
+            <div className="fg-demo-card fg-demo-card--cb">
+              <div className="fg-demo-header">
+                <span className="fg-demo-tag">Trải nghiệm với vai trò</span>
+                <h3>Cán bộ Hội</h3>
+              </div>
+              <ul className="fg-demo-list">
+                <li>◇ Duyệt hồ sơ hàng loạt</li>
+                <li>◇ Thống kê & báo cáo</li>
+                <li>◇ Batch Processing</li>
+              </ul>
+              <button className="fg-btn fg-btn--violet fg-btn--full" onClick={() => go('reviewer')}>
+                Vào Demo Cán bộ Hội →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ FOOTER ━━ */}
+      <footer className="fg-footer">
+        <div className="fg-footer-inner">
+          <span>© 2026 FiveGood Journey. All rights reserved.</span>
+          <div className="fg-footer-links">
+            <a href="#">GitHub</a>
+            <a href="#">Documentation</a>
+            <a href="#">Contact</a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
